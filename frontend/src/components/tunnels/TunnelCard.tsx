@@ -4,13 +4,13 @@ import {
   IconQrcode,
   IconDownload,
   IconUser,
-  IconKey,
-  IconLock,
+  IconShieldLock,
 } from '@tabler/icons-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Small, Muted } from '@/components/ui/typography'
 import { useAuthStore } from '@/stores/auth'
 import { useTunnelsStore } from '@/stores/tunnels'
@@ -69,7 +69,17 @@ export const TunnelCard = ({ tunnel }: Props) => {
       <Card className={!isActive ? 'opacity-60' : undefined}>
         <CardHeader className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
+              {tunnel.mode === 'secure' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconShieldLock className="size-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>Private key never touched the server</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             <Switch
               checked={isActive}
               onCheckedChange={handleToggle}
@@ -77,25 +87,14 @@ export const TunnelCard = ({ tunnel }: Props) => {
               className="shrink-0"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {tunnel.mode === 'simple' ? (
-              <Badge variant="secondary" className="text-xs">
-                <IconKey className="size-3" />
-                Simple
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs">
-                <IconLock className="size-3" />
-                Secure
-              </Badge>
-            )}
-            {tunnel.userId && (
+          {tunnel.userId && (
+            <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="outline" className="text-xs">
                 <IconUser className="size-3" />
                 {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
               </Badge>
-            )}
-          </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-1.5">
           {tunnel.labels && tunnel.labels.length > 0 && (
