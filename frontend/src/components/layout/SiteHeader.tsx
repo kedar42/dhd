@@ -38,10 +38,10 @@ export const SiteHeader = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-md p-1 hover:bg-accent">
-                <span className="hidden text-sm sm:inline">{user.username}</span>
                 <Avatar className="size-7 rounded-md">
                   <AvatarFallback className="rounded-md text-xs">{initials}</AvatarFallback>
                 </Avatar>
+                <span className="hidden text-sm sm:inline">{user.username}</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={4}>
