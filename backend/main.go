@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/kedar/wg-admin/api"
+	"github.com/kedar/wg-admin/auth"
 	"github.com/kedar/wg-admin/db"
 )
 
@@ -26,7 +28,19 @@ func main() {
 	}
 	defer database.Close()
 
-	h := &api.Handler{}
+	// Periodically remove expired sessions
+	go func() {
+		t := time.NewTicker(time.Hour)
+		defer t.Stop()
+		for range t.C {
+			if err := db.DeleteExpiredSessions(database); err != nil {
+				log.Printf("cleanup sessions: %v", err)
+			}
+		}
+	}()
+
+	authStore := auth.NewStore(database)
+	h := &api.Handler{DB: database, Auth: authStore}
 	router := api.NewRouter(h)
 
 	log.Printf("wg-admin listening on :%s", port)

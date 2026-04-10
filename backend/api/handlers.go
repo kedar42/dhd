@@ -1,11 +1,19 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/kedar/wg-admin/auth"
+	"github.com/kedar/wg-admin/db"
 )
 
-type Handler struct{}
+type Handler struct {
+	DB    *sql.DB
+	Auth  *auth.Store
+}
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -17,8 +25,114 @@ func stub(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNotImplemented, map[string]string{"status": "not implemented"})
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request)         { stub(w, r) }
-func (h *Handler) Logout(w http.ResponseWriter, r *http.Request)        { stub(w, r) }
+// POST /api/auth/login
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	user, err := db.GetUserByUsername(h.DB, body.Username)
+	if err != nil {
+		// Use constant-time comparison even on not-found to avoid timing attacks
+		auth.CheckPassword("$2a$12$invalidhashpadding000000000000000000000000000000000000000", body.Password)
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	if !auth.CheckPassword(user.PasswordHash, body.Password) {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	token, err := h.Auth.Create(user.ID, user.Username, user.Role)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	auth.SetCookie(w, token)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"id":       user.ID,
+		"username": user.Username,
+		"role":     user.Role,
+	})
+}
+
+// POST /api/auth/logout
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err == nil {
+		h.Auth.Delete(cookie.Value)
+	}
+	auth.ClearCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/auth/me
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	sess := r.Context().Value(auth.SessionKey).(db.Session)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"id":       sess.UserID,
+		"username": sess.Username,
+		"role":     sess.Role,
+	})
+}
+
+// GET /api/system/setup
+func (h *Handler) SetupStatus(w http.ResponseWriter, r *http.Request) {
+	exists, err := db.AdminExists(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"needsSetup": !exists})
+}
+
+// POST /api/system/setup — only works if no admin exists yet
+func (h *Handler) SetupAdmin(w http.ResponseWriter, r *http.Request) {
+	exists, err := db.AdminExists(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		http.Error(w, "already configured", http.StatusForbidden)
+		return
+	}
+
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	if len(body.Username) < 1 || len(body.Password) < 8 {
+		http.Error(w, "username required and password must be at least 8 characters", http.StatusBadRequest)
+		return
+	}
+
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	id := uuid.New().String()
+	if err := db.CreateUser(h.DB, id, body.Username, hash, "admin"); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
 func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request)     { writeJSON(w, 200, []any{}) }
 func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request)    { stub(w, r) }
 func (h *Handler) DeletePeer(w http.ResponseWriter, r *http.Request)    { stub(w, r) }
