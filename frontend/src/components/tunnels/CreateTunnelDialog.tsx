@@ -23,6 +23,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -30,8 +31,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { api, ApiError } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 import { useTunnelsStore } from '@/stores/tunnels'
+import { api, ApiError } from '@/api/client'
 import type { User } from '@/api/schemas'
 
 const formSchema = z.object({
@@ -45,12 +47,17 @@ type Props = {
 }
 
 export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
+  const currentUser = useAuthStore((s) => s.user)
+  const isAdmin = currentUser?.role === 'admin'
   const create = useTunnelsStore((s) => s.create)
+
   const [config, setConfig] = useState<string | undefined>()
   const [tunnelName, setTunnelName] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
+
   const [users, setUsers] = useState<User[]>([])
+  const [existingLabels, setExistingLabels] = useState<string[]>([])
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
 
@@ -60,13 +67,19 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   })
 
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    api.labels.list().then(setExistingLabels).catch(() => {})
+    if (isAdmin) {
       api.users.list().then(setUsers).catch(() => {})
     }
-  }, [open])
+  }, [open, isAdmin])
 
-  const addLabel = () => {
-    const trimmed = labelInput.trim()
+  const suggestions = existingLabels.filter(
+    (l) => !labels.includes(l) && l.toLowerCase().includes(labelInput.toLowerCase()),
+  )
+
+  const addLabel = (value?: string) => {
+    const trimmed = (value ?? labelInput).trim()
     if (trimmed && !labels.includes(trimmed)) {
       setLabels([...labels, trimmed])
     }
@@ -88,11 +101,16 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     setSubmitting(true)
     setError(undefined)
     try {
-      const response = await create({
+      const params: { name: string; userId?: string; labels?: string[] } = {
         name: values.name,
-        userId: values.userId === 'none' ? undefined : values.userId,
-        labels: labels.length > 0 ? labels : undefined,
-      })
+      }
+      if (isAdmin && values.userId && values.userId !== 'none') {
+        params.userId = values.userId
+      }
+      if (labels.length > 0) {
+        params.labels = labels
+      }
+      const response = await create(params)
       setConfig(response.config)
       setTunnelName(values.name)
     } catch (err) {
@@ -171,31 +189,35 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="userId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Owner</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Unowned" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Unowned</SelectItem>
-                          {users.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.username}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isAdmin && (
+                  <FormField
+                    control={form.control}
+                    name="userId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Owner</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Unowned" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent position="popper">
+                            <SelectGroup>
+                              <SelectItem value="none">Unowned</SelectItem>
+                              {users.map((u) => (
+                                <SelectItem key={u.id} value={u.id}>
+                                  {u.username}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <div className="space-y-2">
                   <FormLabel>Labels</FormLabel>
                   <div className="flex gap-2">
@@ -209,12 +231,27 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={addLabel}
+                      onClick={() => addLabel()}
                       disabled={!labelInput.trim()}
+                      className="shrink-0"
                     >
                       Add
                     </Button>
                   </div>
+                  {labelInput && suggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {suggestions.slice(0, 8).map((s) => (
+                        <Badge
+                          key={s}
+                          variant="outline"
+                          className="cursor-pointer hover:bg-accent"
+                          onClick={() => addLabel(s)}
+                        >
+                          {s}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   {labels.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {labels.map((label) => (

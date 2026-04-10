@@ -74,6 +74,9 @@ export const api = {
   users: {
     list: () => getJson(z.array(UserSchema), '/api/users'),
   },
+  labels: {
+    list: () => getJson(z.array(z.string()), '/api/labels'),
+  },
   tunnels: {
     list: () => getJson(TunnelListSchema, '/api/peers'),
     create: (params: { name: string; userId?: string; labels?: string[] }) =>

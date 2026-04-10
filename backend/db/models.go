@@ -29,6 +29,5 @@ type Peer struct {
 	Mode          string  // "simple" | "secure"
 	WgIP          string
 	Status        string // "active" | "disabled"
-	Labels        string // comma-separated labels
 	CreatedAt     time.Time
 }

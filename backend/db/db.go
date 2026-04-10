@@ -35,8 +35,18 @@ CREATE TABLE IF NOT EXISTS peers (
   mode            TEXT NOT NULL,
   wg_ip           TEXT UNIQUE NOT NULL,
   status          TEXT NOT NULL DEFAULT 'active',
-  labels          TEXT NOT NULL DEFAULT '',
   created_at      DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS labels (
+  id   TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS peer_labels (
+  peer_id  TEXT NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+  label_id TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (peer_id, label_id)
 );
 
 CREATE TABLE IF NOT EXISTS peer_requests (

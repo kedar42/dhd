@@ -24,6 +24,7 @@ func NewRouter(h *Handler) *chi.Mux {
 		r.Get("/api/auth/me", h.Me)
 
 		r.Get("/api/peers", h.ListPeers)
+		r.Get("/api/labels", h.ListLabels)
 		r.Post("/api/requests", h.SubmitRequest)
 		r.Get("/api/stats/{peer_id}", h.GetStats)
 

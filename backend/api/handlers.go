@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,17 +31,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
-}
-
-func parseLabels(s string) []string {
-	if s == "" {
-		return []string{}
-	}
-	return strings.Split(s, ",")
-}
-
-func joinLabels(labels []string) string {
-	return strings.Join(labels, ",")
 }
 
 func stub(w http.ResponseWriter, r *http.Request) {
@@ -185,9 +173,18 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 		CreatedAt       string   `json:"createdAt"`
 	}
 
+	// Bulk load labels for all peers
+	allLabels, err := db.GetAllPeerLabels(h.DB)
+	if err != nil {
+		log.Printf("get all peer labels: %v", err)
+	}
+
 	result := make([]peerResponse, 0, len(peers))
 	for _, p := range peers {
-		labels := parseLabels(p.Labels)
+		labels := allLabels[p.ID]
+		if labels == nil {
+			labels = []string{}
+		}
 		pr := peerResponse{
 			ID:        p.ID,
 			Name:      p.Name,
@@ -270,7 +267,6 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		Mode:          "simple",
 		WgIP:          ip,
 		Status:        "active",
-		Labels:        joinLabels(body.Labels),
 		CreatedAt:     time.Now().UTC(),
 	}
 
@@ -278,6 +274,27 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to save peer", http.StatusInternalServerError)
 		log.Printf("create peer: %v", err)
 		return
+	}
+
+	// Assign labels
+	var labelNames []string
+	if len(body.Labels) > 0 {
+		var labelIDs []string
+		for _, name := range body.Labels {
+			lid, err := db.EnsureLabel(h.DB, uuid.New().String(), name)
+			if err != nil {
+				log.Printf("ensure label %q: %v", name, err)
+				continue
+			}
+			labelIDs = append(labelIDs, lid)
+			labelNames = append(labelNames, name)
+		}
+		if err := db.SetPeerLabels(h.DB, peer.ID, labelIDs); err != nil {
+			log.Printf("set peer labels: %v", err)
+		}
+	}
+	if labelNames == nil {
+		labelNames = []string{}
 	}
 
 	// Add to live WireGuard interface
@@ -310,7 +327,7 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 			"mode":      peer.Mode,
 			"wgIp":      peer.WgIP,
 			"status":    peer.Status,
-			"labels":    parseLabels(peer.Labels),
+			"labels":    labelNames,
 			"createdAt": peer.CreatedAt.Format(time.RFC3339),
 		},
 		"config": clientCfg.String(),
@@ -383,6 +400,10 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	peerLabels, _ := db.GetPeerLabels(h.DB, peer.ID)
+	if peerLabels == nil {
+		peerLabels = []string{}
+	}
 	toggleResp := map[string]any{
 		"id":        peer.ID,
 		"name":      peer.Name,
@@ -390,7 +411,7 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		"mode":      peer.Mode,
 		"wgIp":      peer.WgIP,
 		"status":    newStatus,
-		"labels":    parseLabels(peer.Labels),
+		"labels":    peerLabels,
 		"createdAt": peer.CreatedAt.Format(time.RFC3339),
 	}
 	if peer.UserID != nil {
@@ -463,6 +484,20 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		result = append(result, userResponse{ID: u.ID, Username: u.Username, Role: u.Role})
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// GET /api/labels
+func (h *Handler) ListLabels(w http.ResponseWriter, r *http.Request) {
+	labels, err := db.ListLabels(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("list labels: %v", err)
+		return
+	}
+	if labels == nil {
+		labels = []string{}
+	}
+	writeJSON(w, http.StatusOK, labels)
 }
 
 func (h *Handler) ListRequests(w http.ResponseWriter, r *http.Request)  { writeJSON(w, 200, []any{}) }
