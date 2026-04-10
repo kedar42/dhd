@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -62,6 +62,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const [existingLabels, setExistingLabels] = useState<string[]>([])
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -146,7 +147,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={config ? undefined : handleClose}>
-      <DialogContent className={config ? 'sm:max-w-md' : undefined}>
+      <DialogContent ref={dialogRef} className={config ? 'sm:max-w-md' : undefined}>
         {config ? (
           <>
             <DialogHeader>
@@ -211,7 +212,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                               <SelectValue placeholder="Unowned" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="z-[200]">
+                          <SelectContent container={dialogRef.current}>
                             <SelectGroup>
                               <SelectItem value={UNOWNED}>Unowned</SelectItem>
                               {users.map((u) => (
