@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useNavigate } from 'react-router-dom'
 import { IconShieldCheck } from '@tabler/icons-react'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ type FormValues = z.infer<typeof schema>
 
 export default function Login() {
   const login = useAuthStore(s => s.login)
+  const navigate = useNavigate()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -26,6 +28,7 @@ export default function Login() {
   async function onSubmit(values: FormValues) {
     try {
       await login(values.username, values.password)
+      navigate('/')
     } catch (err) {
       form.setError('root', { message: err instanceof Error ? err.message : 'Login failed' })
     }

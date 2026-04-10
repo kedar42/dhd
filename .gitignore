@@ -10,3 +10,4 @@ backend/*.db-wal
 
 # misc
 .DS_Store
+.claude/

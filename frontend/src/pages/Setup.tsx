@@ -1,7 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useNavigate } from 'react-router-dom'
 import { IconShieldCheck } from '@tabler/icons-react'
+import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,9 +22,9 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
-type Props = { onDone: () => void }
-
-export default function Setup({ onDone }: Props) {
+export default function Setup() {
+  const completeSetup = useAuthStore(s => s.completeSetup)
+  const navigate = useNavigate()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', password: '', confirm: '' },
@@ -39,7 +41,8 @@ export default function Setup({ onDone }: Props) {
         form.setError('root', { message: (await res.text()).trim() || 'Setup failed' })
         return
       }
-      onDone()
+      completeSetup()
+      navigate('/login')
     } catch {
       form.setError('root', { message: 'Network error' })
     }

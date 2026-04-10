@@ -1,3 +1,4 @@
+import { useLocation, NavLink } from 'react-router-dom'
 import { type Icon } from '@tabler/icons-react'
 import {
   SidebarGroup,
@@ -9,21 +10,24 @@ import {
 
 type NavItem = {
   title: string
+  url: string
   icon: Icon
-  isActive?: boolean
-  onClick: () => void
 }
 
 export function NavMain({ items }: { items: NavItem[] }) {
+  const { pathname } = useLocation()
+
   return (
     <SidebarGroup>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map(item => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} isActive={item.isActive} onClick={item.onClick}>
-                <item.icon />
-                <span>{item.title}</span>
+              <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
+                <NavLink to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

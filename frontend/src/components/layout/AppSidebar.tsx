@@ -17,30 +17,24 @@ import {
 } from '@/components/ui/sidebar'
 import { NavMain } from './NavMain'
 import { NavUser } from './NavUser'
-import { type User } from '@/stores/auth'
-
-export type Page = 'Peers' | 'Requests' | 'Firewall' | 'Stats' | 'Settings'
+import { type User } from '@/api/schemas'
 
 const adminNav = [
-  { title: 'Peers', icon: IconUsers },
-  { title: 'Requests', icon: IconServer },
-  { title: 'Firewall', icon: IconFlame },
-  { title: 'Stats', icon: IconChartBar },
-  { title: 'Settings', icon: IconSettings },
-] satisfies { title: Page; icon: typeof IconUsers }[]
+  { title: 'Peers',    url: '/peers',    icon: IconUsers },
+  { title: 'Requests', url: '/requests', icon: IconServer },
+  { title: 'Firewall', url: '/firewall', icon: IconFlame },
+  { title: 'Stats',    url: '/stats',    icon: IconChartBar },
+  { title: 'Settings', url: '/settings', icon: IconSettings },
+]
 
 const userNav = [
-  { title: 'Peers', icon: IconUsers },
-  { title: 'Stats', icon: IconChartBar },
-] satisfies { title: Page; icon: typeof IconUsers }[]
+  { title: 'Peers', url: '/peers', icon: IconUsers },
+  { title: 'Stats', url: '/stats', icon: IconChartBar },
+]
 
-type Props = {
-  user: User
-  page: Page
-  onNavigate: (p: Page) => void
-}
+type Props = { user: User } & React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ user, page, onNavigate, ...props }: Props & React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ user, ...props }: Props) {
   const nav = user.role === 'admin' ? adminNav : userNav
 
   return (
@@ -56,13 +50,7 @@ export function AppSidebar({ user, page, onNavigate, ...props }: Props & React.C
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain
-          items={nav.map(item => ({
-            ...item,
-            isActive: page === item.title,
-            onClick: () => onNavigate(item.title),
-          }))}
-        />
+        <NavMain items={nav} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

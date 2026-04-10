@@ -27,12 +27,11 @@ func stub(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/auth/login
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	body, ok := decode[struct {
+		Username string `json:"username" validate:"required"`
+		Password string `json:"password" validate:"required"`
+	}](w, r)
+	if !ok {
 		return
 	}
 
@@ -105,16 +104,11 @@ func (h *Handler) SetupAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	if len(body.Username) < 1 || len(body.Password) < 8 {
-		http.Error(w, "username required and password must be at least 8 characters", http.StatusBadRequest)
+	body, ok := decode[struct {
+		Username string `json:"username" validate:"required"`
+		Password string `json:"password" validate:"required,min=8"`
+	}](w, r)
+	if !ok {
 		return
 	}
 
