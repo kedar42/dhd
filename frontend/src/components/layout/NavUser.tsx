@@ -1,14 +1,11 @@
 import {
   IconLogout,
   IconSelector,
-  IconShield,
-  IconUser,
 } from '@tabler/icons-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -64,19 +61,6 @@ export const NavUser = ({ user }: { user: User }) => {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUser />
-                Account
-              </DropdownMenuItem>
-              {user.role === 'admin' && (
-                <DropdownMenuItem>
-                  <IconShield />
-                  Admin
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <IconLogout />
