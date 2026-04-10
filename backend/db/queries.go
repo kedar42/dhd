@@ -107,3 +107,82 @@ func DeleteExpiredSessions(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM sessions WHERE expires_at <= ?`, time.Now().UTC())
 	return err
 }
+
+// --- Peers ---
+
+func CreatePeer(db *sql.DB, p Peer) error {
+	_, err := db.Exec(
+		`INSERT INTO peers (id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.UserID, p.Name, p.PublicKey, p.PrivateKeyEnc, p.Mode, p.WgIP, p.Status, p.CreatedAt,
+	)
+	return err
+}
+
+func ListPeers(db *sql.DB) ([]Peer, error) {
+	rows, err := db.Query(
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		 FROM peers ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var peers []Peer
+	for rows.Next() {
+		var p Peer
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		peers = append(peers, p)
+	}
+	return peers, rows.Err()
+}
+
+func GetPeer(db *sql.DB, id string) (Peer, error) {
+	row := db.QueryRow(
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		 FROM peers WHERE id = ?`, id,
+	)
+	var p Peer
+	if err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Peer{}, ErrNotFound
+		}
+		return Peer{}, err
+	}
+	return p, nil
+}
+
+func DeletePeer(db *sql.DB, id string) error {
+	_, err := db.Exec(`DELETE FROM peers WHERE id = ?`, id)
+	return err
+}
+
+func UpdatePeerStatus(db *sql.DB, id, status string) error {
+	_, err := db.Exec(`UPDATE peers SET status = ? WHERE id = ?`, status, id)
+	return err
+}
+
+// --- Settings ---
+
+func GetSetting(db *sql.DB, key string) (string, error) {
+	var value string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return value, nil
+}
+
+func SetSetting(db *sql.DB, key, value string) error {
+	_, err := db.Exec(
+		`INSERT INTO settings (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		key, value,
+	)
+	return err
+}

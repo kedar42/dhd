@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kedar/wg-admin/auth"
 	"github.com/kedar/wg-admin/db"
+	"github.com/kedar/wg-admin/wg"
 )
 
 // dummyHash is used for constant-time comparison when a user is not found,
@@ -15,8 +16,9 @@ import (
 var dummyHash, _ = auth.HashPassword("dummy-password")
 
 type Handler struct {
-	DB    *sql.DB
-	Auth  *auth.Store
+	DB   *sql.DB
+	Auth *auth.Store
+	WG   *wg.Service
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
