@@ -71,10 +71,13 @@ export const api = {
   health: {
     get: () => getJson(HealthSchema, '/api/health'),
   },
+  users: {
+    list: () => getJson(z.array(UserSchema), '/api/users'),
+  },
   tunnels: {
     list: () => getJson(TunnelListSchema, '/api/peers'),
-    create: (name: string) =>
-      postJson(CreateTunnelResponseSchema, '/api/peers', { name }),
+    create: (params: { name: string; userId?: string; labels?: string[] }) =>
+      postJson(CreateTunnelResponseSchema, '/api/peers', params),
     delete: (id: string) => deleteReq(`/api/peers/${id}`),
     toggle: (id: string) => patchJson(TunnelSchema, `/api/peers/${id}/toggle`),
     config: (id: string) => getJson(z.object({ config: z.string() }), `/api/peers/${id}/config`),

@@ -25,6 +25,25 @@ func GetUserByUsername(db *sql.DB, username string) (User, error) {
 	return u, nil
 }
 
+func ListUsers(db *sql.DB) ([]User, error) {
+	rows, err := db.Query(
+		`SELECT id, username, password_hash, role, created_at FROM users ORDER BY username`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
 func GetUserByID(db *sql.DB, id string) (User, error) {
 	row := db.QueryRow(
 		`SELECT id, username, password_hash, role, created_at FROM users WHERE id = ?`,

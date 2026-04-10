@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QRCodeSVG } from 'qrcode.react'
-import { IconDownload } from '@tabler/icons-react'
+import { IconDownload, IconX } from '@tabler/icons-react'
 import {
   Dialog,
   DialogContent,
@@ -20,13 +20,23 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { api, ApiError } from '@/api/client'
 import { useTunnelsStore } from '@/stores/tunnels'
-import { ApiError } from '@/api/client'
+import type { User } from '@/api/schemas'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
+  userId: z.string().optional(),
 })
 
 type Props = {
@@ -36,22 +46,54 @@ type Props = {
 
 export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const create = useTunnelsStore((s) => s.create)
-  const [config, setConfig] = useState<string | null>(null)
+  const [config, setConfig] = useState<string | undefined>()
   const [tunnelName, setTunnelName] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
+  const [labels, setLabels] = useState<string[]>([])
+  const [labelInput, setLabelInput] = useState('')
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', userId: undefined },
   })
+
+  useEffect(() => {
+    if (open) {
+      api.users.list().then(setUsers).catch(() => {})
+    }
+  }, [open])
+
+  const addLabel = () => {
+    const trimmed = labelInput.trim()
+    if (trimmed && !labels.includes(trimmed)) {
+      setLabels([...labels, trimmed])
+    }
+    setLabelInput('')
+  }
+
+  const removeLabel = (label: string) => {
+    setLabels(labels.filter((l) => l !== label))
+  }
+
+  const handleLabelKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addLabel()
+    }
+  }
 
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setSubmitting(true)
-    setError(null)
+    setError(undefined)
     try {
-      const response = await create(values.name)
-      setConfig(response.config ?? null)
+      const response = await create({
+        name: values.name,
+        userId: values.userId === 'none' ? undefined : values.userId,
+        labels: labels.length > 0 ? labels : undefined,
+      })
+      setConfig(response.config)
       setTunnelName(values.name)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create tunnel')
@@ -72,9 +114,11 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   }
 
   const handleClose = () => {
-    setConfig(null)
+    setConfig(undefined)
     setTunnelName('')
-    setError(null)
+    setError(undefined)
+    setLabels([])
+    setLabelInput('')
     form.reset()
     onOpenChange(false)
   }
@@ -127,6 +171,67 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="userId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Owner</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Unowned" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Unowned</SelectItem>
+                          {users.map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.username}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                  <FormLabel>Labels</FormLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a label..."
+                      value={labelInput}
+                      onChange={(e) => setLabelInput(e.target.value)}
+                      onKeyDown={handleLabelKeyDown}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addLabel}
+                      disabled={!labelInput.trim()}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {labels.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {labels.map((label) => (
+                        <Badge key={label} variant="secondary" className="gap-1">
+                          {label}
+                          <button
+                            type="button"
+                            onClick={() => removeLabel(label)}
+                            className="hover:text-destructive"
+                          >
+                            <IconX className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={handleClose} disabled={submitting}>

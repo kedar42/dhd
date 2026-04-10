@@ -7,7 +7,7 @@ type TunnelsState = {
   loading: boolean
   error: string | null
   fetch: () => Promise<void>
-  create: (name: string) => Promise<CreateTunnelResponse>
+  create: (params: { name: string; userId?: string; labels?: string[] }) => Promise<CreateTunnelResponse>
   remove: (id: string) => Promise<void>
   toggle: (id: string) => Promise<void>
 }
@@ -28,8 +28,8 @@ export const useTunnelsStore = create<TunnelsState>((set, get) => ({
     }
   },
 
-  create: async (name: string) => {
-    const response = await api.tunnels.create(name)
+  create: async (params) => {
+    const response = await api.tunnels.create(params)
     set({ tunnels: [response.tunnel, ...get().tunnels] })
     return response
   },

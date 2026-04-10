@@ -445,6 +445,26 @@ func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/users
+func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := db.ListUsers(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("list users: %v", err)
+		return
+	}
+	type userResponse struct {
+		ID       string `json:"id"`
+		Username string `json:"username"`
+		Role     string `json:"role"`
+	}
+	result := make([]userResponse, 0, len(users))
+	for _, u := range users {
+		result = append(result, userResponse{ID: u.ID, Username: u.Username, Role: u.Role})
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (h *Handler) ListRequests(w http.ResponseWriter, r *http.Request)  { writeJSON(w, 200, []any{}) }
 func (h *Handler) SubmitRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }
 func (h *Handler) UpdateRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }

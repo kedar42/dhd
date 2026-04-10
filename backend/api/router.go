@@ -31,6 +31,7 @@ func NewRouter(h *Handler) *chi.Mux {
 		r.Group(func(r chi.Router) {
 			r.Use(h.Auth.AdminOnly)
 
+			r.Get("/api/users", h.ListUsers)
 			r.Post("/api/peers", h.CreatePeer)
 			r.Delete("/api/peers/{id}", h.DeletePeer)
 			r.Patch("/api/peers/{id}/toggle", h.TogglePeer)
