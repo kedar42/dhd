@@ -12,7 +12,6 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { NavMain } from './NavMain'
@@ -42,10 +41,10 @@ export const AppSidebar = ({ user, ...props }: Props) => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="data-[slot=sidebar-menu-button]:p-1.5!">
-              <IconShieldCheck className="size-5!" />
-              <span className="text-base font-semibold">DHD</span>
-            </SidebarMenuButton>
+            <div className="flex h-12 items-center gap-2 overflow-hidden rounded-md p-1.5 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!">
+              <IconShieldCheck className="size-5! shrink-0" />
+              <span className="text-base font-semibold truncate">DHD</span>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

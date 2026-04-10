@@ -91,6 +91,19 @@
   --sidebar-primary-foreground: hsl(0 0% 100%);
 }
 
+@layer base {
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  a[href],
+  select,
+  summary {
+    cursor: pointer;
+  }
+}
+
 * {
   border-color: var(--border);
 }

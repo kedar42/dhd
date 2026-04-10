@@ -1,6 +1,6 @@
 import {
-  IconDotsVertical,
   IconLogout,
+  IconSelector,
   IconShield,
   IconUser,
 } from '@tabler/icons-react'
@@ -44,7 +44,7 @@ export const NavUser = ({ user }: { user: User }) => {
                 <span className="truncate font-medium">{user.username}</span>
                 <span className="truncate text-xs text-muted-foreground capitalize">{user.role}</span>
               </div>
-              <IconDotsVertical className="ml-auto size-4" />
+              <IconSelector className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
