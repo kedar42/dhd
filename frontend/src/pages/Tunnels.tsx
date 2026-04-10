@@ -7,7 +7,7 @@ import { useTunnelsStore } from '@/stores/tunnels'
 import { TunnelCard } from '@/components/tunnels/TunnelCard'
 import { CreateTunnelDialog } from '@/components/tunnels/CreateTunnelDialog'
 
-const Peers = () => {
+const Tunnels = () => {
   const { tunnels, loading, error, fetch } = useTunnelsStore()
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -68,4 +68,4 @@ const Peers = () => {
   )
 }
 
-export default Peers
+export default Tunnels

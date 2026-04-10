@@ -10,6 +10,7 @@ import (
 
 	"github.com/kedar/wg-admin/api"
 	"github.com/kedar/wg-admin/auth"
+	"github.com/kedar/wg-admin/crypto"
 	"github.com/kedar/wg-admin/db"
 	"github.com/kedar/wg-admin/wg"
 )
@@ -43,6 +44,11 @@ func main() {
 	}()
 
 	// WireGuard service
+	secretKey := env("SECRET_KEY", "")
+	if secretKey == "" {
+		log.Fatal("SECRET_KEY is required")
+	}
+
 	wgPort, _ := strconv.Atoi(env("WG_PORT", "51820"))
 	wgService := wg.New(wg.Config{
 		Interface: env("WG_INTERFACE", "wg0"),
@@ -51,7 +57,7 @@ func main() {
 		Endpoint:  env("WG_ENDPOINT", "localhost"),
 		DNS:       env("WG_DNS", "1.1.1.1"),
 		DryRun:    env("WG_DRY_RUN", "0") == "1",
-		SecretKey: env("SECRET_KEY", ""),
+		SecretKey: secretKey,
 	})
 
 	// Bootstrap server WireGuard keys on first run
@@ -86,7 +92,11 @@ func bootstrapServerKeys(database *sql.DB, svc *wg.Service) error {
 		return err
 	}
 
-	if err := db.SetSetting(database, "wg_server_private_key", privKey); err != nil {
+	encPrivKey, err := crypto.Encrypt(privKey, svc.Cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	if err := db.SetSetting(database, "wg_server_private_key", encPrivKey); err != nil {
 		return err
 	}
 	if err := db.SetSetting(database, "wg_server_public_key", pubKey); err != nil {

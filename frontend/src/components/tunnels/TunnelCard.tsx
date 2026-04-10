@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   IconTrash,
   IconQrcode,
@@ -50,6 +51,8 @@ export const TunnelCard = ({ tunnel }: Props) => {
     setToggling(true)
     try {
       await toggle(tunnel.id)
+    } catch {
+      toast.error('Failed to toggle tunnel')
     } finally {
       setToggling(false)
     }
@@ -59,6 +62,8 @@ export const TunnelCard = ({ tunnel }: Props) => {
     setDownloading(true)
     try {
       await downloadConfig(tunnel)
+    } catch {
+      toast.error('Failed to download config')
     } finally {
       setDownloading(false)
     }

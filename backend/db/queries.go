@@ -27,7 +27,7 @@ func GetUserByUsername(db *sql.DB, username string) (User, error) {
 
 func ListUsers(db *sql.DB) ([]User, error) {
 	rows, err := db.Query(
-		`SELECT id, username, password_hash, role, created_at FROM users ORDER BY username`,
+		`SELECT id, username, role, created_at FROM users ORDER BY username`,
 	)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func ListUsers(db *sql.DB) ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, u)
@@ -214,16 +214,13 @@ func ListLabels(db *sql.DB) ([]string, error) {
 
 // EnsureLabel creates a label if it doesn't exist and returns its ID.
 func EnsureLabel(db *sql.DB, id, name string) (string, error) {
-	var existing string
-	err := db.QueryRow(`SELECT id FROM labels WHERE name = ?`, name).Scan(&existing)
-	if err == nil {
-		return existing, nil
-	}
-	_, err = db.Exec(`INSERT INTO labels (id, name) VALUES (?, ?)`, id, name)
+	_, err := db.Exec(`INSERT INTO labels (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING`, id, name)
 	if err != nil {
 		return "", err
 	}
-	return id, nil
+	var existing string
+	err = db.QueryRow(`SELECT id FROM labels WHERE name = ?`, name).Scan(&existing)
+	return existing, err
 }
 
 func SetPeerLabels(db *sql.DB, peerID string, labelIDs []string) error {

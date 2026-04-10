@@ -394,7 +394,10 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peerLabels, _ := db.GetPeerLabels(h.DB, peer.ID)
+	peerLabels, err := db.GetPeerLabels(h.DB, peer.ID)
+	if err != nil {
+		log.Printf("get peer labels: %v", err)
+	}
 	if peerLabels == nil {
 		peerLabels = []string{}
 	}
