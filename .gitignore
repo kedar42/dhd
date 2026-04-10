@@ -1,0 +1,12 @@
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# backend build artifacts
+backend/wg-admin
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# misc
+.DS_Store
