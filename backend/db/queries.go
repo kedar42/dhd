@@ -25,6 +25,21 @@ func GetUserByUsername(db *sql.DB, username string) (User, error) {
 	return u, nil
 }
 
+func GetUserByID(db *sql.DB, id string) (User, error) {
+	row := db.QueryRow(
+		`SELECT id, username, password_hash, role, created_at FROM users WHERE id = ?`,
+		id,
+	)
+	var u User
+	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return User{}, ErrNotFound
+		}
+		return User{}, err
+	}
+	return u, nil
+}
+
 func CreateUser(db *sql.DB, id, username, passwordHash, role string) error {
 	_, err := db.Exec(
 		`INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)`,

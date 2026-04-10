@@ -165,6 +165,7 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 		Mode            string  `json:"mode"`
 		WgIP            string  `json:"wgIp"`
 		Status          string  `json:"status"`
+		UserID          string  `json:"userId"`
 		LatestHandshake *int64  `json:"latestHandshake"`
 		TransferRx      int64   `json:"transferRx"`
 		TransferTx      int64   `json:"transferTx"`
@@ -180,6 +181,7 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 			Mode:      p.Mode,
 			WgIP:      p.WgIP,
 			Status:    p.Status,
+			UserID:    p.UserID,
 			CreatedAt: p.CreatedAt.Format(time.RFC3339),
 		}
 		if live, ok := liveStats[p.PublicKey]; ok {
@@ -285,6 +287,7 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 			"mode":      peer.Mode,
 			"wgIp":      peer.WgIP,
 			"status":    peer.Status,
+			"userId":    peer.UserID,
 			"createdAt": peer.CreatedAt.Format(time.RFC3339),
 		},
 		"config": clientCfg.String(),
@@ -360,6 +363,7 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		"mode":      peer.Mode,
 		"wgIp":      peer.WgIP,
 		"status":    newStatus,
+		"userId":    peer.UserID,
 		"createdAt": peer.CreatedAt.Format(time.RFC3339),
 	})
 }

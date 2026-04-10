@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import {
   IconTrash,
-  IconKey,
   IconQrcode,
   IconDownload,
+  IconUser,
 } from '@tabler/icons-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { Small, Muted } from '@/components/ui/typography'
+import { useAuthStore } from '@/stores/auth'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { QRDialog, downloadConfig } from './ConfigDialog'
 import { DeleteTunnelDialog } from './DeleteTunnelDialog'
@@ -34,6 +36,7 @@ const formatHandshake = (ts: number | null | undefined): string => {
 type Props = { tunnel: Tunnel }
 
 export const TunnelCard = ({ tunnel }: Props) => {
+  const user = useAuthStore((s) => s.user)
   const toggle = useTunnelsStore((s) => s.toggle)
   const [toggling, setToggling] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -63,16 +66,22 @@ export const TunnelCard = ({ tunnel }: Props) => {
   return (
     <>
       <Card className={!isActive ? 'opacity-60' : undefined}>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
-          <div className="flex items-center gap-2">
-            {tunnel.mode === 'simple' && (
-              <Badge variant="secondary" className="text-xs">
-                <IconKey className="size-3" />
-                Simple
-              </Badge>
-            )}
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div className="space-y-1">
+            <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <IconUser className="size-3" />
+              <span className="text-xs">
+                {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor={`toggle-${tunnel.id}`} className="text-xs text-muted-foreground">
+              {isActive ? 'Active' : 'Disabled'}
+            </Label>
             <Switch
+              id={`toggle-${tunnel.id}`}
               checked={isActive}
               onCheckedChange={handleToggle}
               disabled={toggling}
@@ -82,7 +91,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
         <CardContent className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Muted>IP</Muted>
-            <Small>{tunnel.wgIp}</Small>
+            <Small className="font-mono">{tunnel.wgIp}</Small>
           </div>
           <div className="flex items-center justify-between">
             <Muted>Public Key</Muted>
@@ -101,35 +110,45 @@ export const TunnelCard = ({ tunnel }: Props) => {
             </Small>
           </div>
         </CardContent>
-        <CardFooter className="justify-end gap-2">
-          {tunnel.mode === 'simple' && (
-            <>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setQrOpen(true)}
-                title="Show QR code"
-              >
-                <IconQrcode className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={handleDownload}
-                disabled={downloading}
-                title="Download .conf"
-              >
-                <IconDownload className="size-4" />
-              </Button>
-            </>
-          )}
-          <Button
-            variant="destructive"
-            size="icon-sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <IconTrash className="size-4" />
-          </Button>
+        <CardFooter className="justify-between">
+          <div className="flex items-center gap-1.5">
+            {tunnel.mode === 'simple' && (
+              <Badge variant="secondary" className="text-xs">Simple</Badge>
+            )}
+            {tunnel.mode === 'secure' && (
+              <Badge variant="outline" className="text-xs">Secure</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {tunnel.mode === 'simple' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setQrOpen(true)}
+                  title="Show QR code"
+                >
+                  <IconQrcode className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  title="Download .conf"
+                >
+                  <IconDownload className="size-4" />
+                </Button>
+              </>
+            )}
+            <Button
+              variant="destructive"
+              size="icon-sm"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <IconTrash className="size-4" />
+            </Button>
+          </div>
         </CardFooter>
       </Card>
       <QRDialog tunnel={tunnel} open={qrOpen} onOpenChange={setQrOpen} />

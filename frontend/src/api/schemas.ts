@@ -17,13 +17,20 @@ export const HealthSchema = z.object({
 })
 export type Health = z.infer<typeof HealthSchema>
 
+export const TunnelMode = z.enum(['simple', 'secure'])
+export type TunnelMode = z.infer<typeof TunnelMode>
+
+export const TunnelStatus = z.enum(['active', 'disabled'])
+export type TunnelStatus = z.infer<typeof TunnelStatus>
+
 export const TunnelSchema = z.object({
   id: z.string(),
   name: z.string(),
   publicKey: z.string(),
-  mode: z.enum(['simple', 'secure']),
-  wgIp: z.string(),
-  status: z.enum(['active', 'disabled']),
+  mode: TunnelMode,
+  wgIp: z.ipv4(),
+  status: TunnelStatus,
+  userId: z.string(),
   latestHandshake: z.number().nullable().optional(),
   transferRx: z.number().optional().default(0),
   transferTx: z.number().optional().default(0),
