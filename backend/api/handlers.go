@@ -166,9 +166,9 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 		WgIP            string  `json:"wgIp"`
 		Status          string  `json:"status"`
 		UserID          string  `json:"userId"`
-		LatestHandshake *int64  `json:"latestHandshake"`
-		TransferRx      int64   `json:"transferRx"`
-		TransferTx      int64   `json:"transferTx"`
+		LatestHandshake *int64  `json:"latestHandshake,omitempty"`
+		TransferRx      *int64  `json:"transferRx,omitempty"`
+		TransferTx      *int64  `json:"transferTx,omitempty"`
 		CreatedAt       string  `json:"createdAt"`
 	}
 
@@ -186,8 +186,8 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 		}
 		if live, ok := liveStats[p.PublicKey]; ok {
 			pr.LatestHandshake = &live.LatestHandshake
-			pr.TransferRx = live.TransferRx
-			pr.TransferTx = live.TransferTx
+			pr.TransferRx = &live.TransferRx
+			pr.TransferTx = &live.TransferTx
 		}
 		result = append(result, pr)
 	}

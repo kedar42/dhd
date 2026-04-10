@@ -24,8 +24,8 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`
 }
 
-const formatHandshake = (ts: number | null | undefined): string => {
-  if (!ts || ts === 0) return 'Never'
+const formatHandshake = (ts: number | undefined): string => {
+  if (ts === undefined || ts === 0) return 'Never'
   const diff = Math.floor(Date.now() / 1000 - ts)
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
@@ -35,11 +35,10 @@ const formatHandshake = (ts: number | null | undefined): string => {
 
 type Props = {
   tunnel: Tunnel
-  showLabel?: boolean
-  showOwner?: boolean
+  label?: string
 }
 
-export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props) => {
+export const TunnelCard = ({ tunnel, label }: Props) => {
   const user = useAuthStore((s) => s.user)
   const toggle = useTunnelsStore((s) => s.toggle)
   const [toggling, setToggling] = useState(false)
@@ -48,6 +47,7 @@ export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const isActive = tunnel.status === 'active'
+  const switchLabel = label ?? (isActive ? 'Active' : 'Disabled')
 
   const handleToggle = async () => {
     setToggling(true)
@@ -73,7 +73,7 @@ export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <div className="space-y-1">
             <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
-            {showOwner && (
+            {tunnel.userId && (
               <div className="flex items-center gap-1 text-muted-foreground">
                 <IconUser className="size-3" />
                 <span className="text-xs">
@@ -83,11 +83,9 @@ export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props
             )}
           </div>
           <div className="flex items-center gap-3">
-            {showLabel && (
-              <Label htmlFor={`toggle-${tunnel.id}`} className="text-xs text-muted-foreground">
-                {isActive ? 'Active' : 'Disabled'}
-              </Label>
-            )}
+            <Label htmlFor={`toggle-${tunnel.id}`} className="text-xs text-muted-foreground">
+              {switchLabel}
+            </Label>
             <Switch
               id={`toggle-${tunnel.id}`}
               checked={isActive}
@@ -111,12 +109,14 @@ export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props
             <Muted>Last Handshake</Muted>
             <Small>{formatHandshake(tunnel.latestHandshake)}</Small>
           </div>
-          <div className="flex items-center justify-between">
-            <Muted>Transfer</Muted>
-            <Small>
-              {formatBytes(tunnel.transferRx ?? 0)} / {formatBytes(tunnel.transferTx ?? 0)}
-            </Small>
-          </div>
+          {(tunnel.transferRx !== undefined || tunnel.transferTx !== undefined) && (
+            <div className="flex items-center justify-between">
+              <Muted>Transfer</Muted>
+              <Small>
+                {formatBytes(tunnel.transferRx ?? 0)} / {formatBytes(tunnel.transferTx ?? 0)}
+              </Small>
+            </div>
+          )}
         </CardContent>
         <CardFooter className="justify-between">
           <div className="flex items-center gap-1.5">

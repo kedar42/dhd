@@ -30,10 +30,10 @@ export const TunnelSchema = z.object({
   mode: TunnelMode,
   wgIp: z.ipv4(),
   status: TunnelStatus,
-  userId: z.string(),
-  latestHandshake: z.number().nullable().optional(),
-  transferRx: z.number().optional().default(0),
-  transferTx: z.number().optional().default(0),
+  userId: z.string().optional(),
+  latestHandshake: z.number().optional(),
+  transferRx: z.number().optional(),
+  transferTx: z.number().optional(),
   createdAt: z.string(),
 })
 export type Tunnel = z.infer<typeof TunnelSchema>

@@ -17,7 +17,7 @@ import { NavMain } from './NavMain'
 import { type User } from '@/api/schemas'
 
 const adminNav = [
-  { title: 'Tunnels',  url: '/peers',    icon: IconUsers },
+  { title: 'Tunnels',  url: '/tunnels',    icon: IconUsers },
   { title: 'Requests', url: '/requests', icon: IconServer },
   { title: 'Firewall', url: '/firewall', icon: IconFlame },
   { title: 'Stats',    url: '/stats',    icon: IconChartBar },
@@ -25,7 +25,7 @@ const adminNav = [
 ]
 
 const userNav = [
-  { title: 'Peers', url: '/peers', icon: IconUsers },
+  { title: 'Tunnels', url: '/tunnels', icon: IconUsers },
   { title: 'Stats', url: '/stats', icon: IconChartBar },
 ]
 
