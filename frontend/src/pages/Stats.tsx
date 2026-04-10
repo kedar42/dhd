@@ -1,3 +1,5 @@
-export default function Stats() {
-  return <div>Stats page</div>
-}
+import { Muted } from '@/components/ui/typography'
+
+const Stats = () => <Muted>Stats page</Muted>
+
+export default Stats

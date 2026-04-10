@@ -1,3 +1,5 @@
-export default function Requests() {
-  return <div>Requests page</div>
-}
+import { Muted } from '@/components/ui/typography'
+
+const Requests = () => <Muted>Requests page</Muted>
+
+export default Requests

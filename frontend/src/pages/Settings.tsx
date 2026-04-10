@@ -1,3 +1,5 @@
-export default function Settings() {
-  return <div>Settings page</div>
-}
+import { Muted } from '@/components/ui/typography'
+
+const Settings = () => <Muted>Settings page</Muted>
+
+export default Settings

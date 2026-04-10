@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  username   TEXT NOT NULL,
+  role       TEXT NOT NULL,
+  created_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  last_seen  DATETIME NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS peers (
   id              TEXT PRIMARY KEY,
   user_id         TEXT REFERENCES users(id),
