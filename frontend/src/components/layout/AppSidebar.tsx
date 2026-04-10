@@ -34,7 +34,7 @@ const userNav = [
 
 type Props = { user: User } & React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ user, ...props }: Props) {
+export const AppSidebar = ({ user, ...props }: Props) => {
   const nav = user.role === 'admin' ? adminNav : userNav
 
   return (

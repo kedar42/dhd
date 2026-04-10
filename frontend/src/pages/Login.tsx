@@ -16,7 +16,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export default function Login() {
+const Login = () => {
   const login = useAuthStore(s => s.login)
   const navigate = useNavigate()
 
@@ -25,7 +25,7 @@ export default function Login() {
     defaultValues: { username: '', password: '' },
   })
 
-  async function onSubmit(values: FormValues) {
+  const onSubmit = async (values: FormValues) => {
     try {
       await login(values.username, values.password)
       navigate('/')
@@ -86,3 +86,5 @@ export default function Login() {
     </div>
   )
 }
+
+export default Login

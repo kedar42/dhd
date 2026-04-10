@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { IconShieldCheck } from '@tabler/icons-react'
 import { useAuthStore } from '@/stores/auth'
+import { api, ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +23,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
-export default function Setup() {
+const Setup = () => {
   const completeSetup = useAuthStore(s => s.completeSetup)
   const navigate = useNavigate()
   const form = useForm<FormValues>({
@@ -30,21 +31,13 @@ export default function Setup() {
     defaultValues: { username: '', password: '', confirm: '' },
   })
 
-  async function onSubmit(values: FormValues) {
+  const onSubmit = async (values: FormValues) => {
     try {
-      const res = await fetch('/api/system/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: values.username, password: values.password }),
-      })
-      if (!res.ok) {
-        form.setError('root', { message: (await res.text()).trim() || 'Setup failed' })
-        return
-      }
+      await api.system.setup(values.username, values.password)
       completeSetup()
       navigate('/login')
-    } catch {
-      form.setError('root', { message: 'Network error' })
+    } catch (err) {
+      form.setError('root', { message: err instanceof ApiError ? err.message : 'Network error' })
     }
   }
 
@@ -113,3 +106,5 @@ export default function Setup() {
     </div>
   )
 }
+
+export default Setup

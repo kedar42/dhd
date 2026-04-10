@@ -11,14 +11,14 @@ import Firewall from '@/pages/Firewall'
 import Stats from '@/pages/Stats'
 import Settings from '@/pages/Settings'
 
-function RequireSetup() {
+const RequireSetup = () => {
   const { needsSetup, initialized } = useAuthStore()
   if (!initialized) return null
   if (!needsSetup) return <Navigate to="/" replace />
   return <Outlet />
 }
 
-function RequireAuth() {
+const RequireAuth = () => {
   const { user, initialized, needsSetup } = useAuthStore()
   if (!initialized) return null
   if (needsSetup) return <Navigate to="/setup" replace />
@@ -36,13 +36,13 @@ function RequireAuth() {
   )
 }
 
-function RequireAdmin() {
+const RequireAdmin = () => {
   const user = useAuthStore(s => s.user)
   if (user?.role !== 'admin') return <Navigate to="/peers" replace />
   return <Outlet />
 }
 
-function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
+const RedirectIfAuthed = ({ children }: { children: React.ReactNode }) => {
   const { user, initialized } = useAuthStore()
   if (!initialized) return null
   if (user) return <Navigate to="/" replace />

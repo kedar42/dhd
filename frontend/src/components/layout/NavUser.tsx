@@ -20,9 +20,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useAuthStore, type User } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth'
+import { type User } from '@/api/schemas'
 
-export function NavUser({ user }: { user: User }) {
+export const NavUser = ({ user }: { user: User }) => {
   const { isMobile } = useSidebar()
   const logout = useAuthStore(s => s.logout)
   const initials = user.username.slice(0, 2).toUpperCase()

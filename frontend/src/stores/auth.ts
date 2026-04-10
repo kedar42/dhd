@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import { api } from '@/api/client'
 import { type User } from '@/api/schemas'
 
-export type { User }
-
 type AuthState = {
   user: User | null
   initialized: boolean

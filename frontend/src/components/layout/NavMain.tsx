@@ -14,7 +14,7 @@ type NavItem = {
   icon: Icon
 }
 
-export function NavMain({ items }: { items: NavItem[] }) {
+export const NavMain = ({ items }: { items: NavItem[] }) => {
   const { pathname } = useLocation()
 
   return (

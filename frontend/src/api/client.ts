@@ -8,7 +8,7 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(schema: z.ZodType<T>, url: string): Promise<T> {
+const getJson = async <T>(schema: z.ZodType<T>, url: string): Promise<T> => {
   const res = await fetch(url)
   if (!res.ok) throw new ApiError(res.status, await res.text())
   return schema.parse(await res.json())
@@ -45,7 +45,7 @@ export const api = {
     me: () => getJson(UserSchema, '/api/auth/me'),
     login: (username: string, password: string) =>
       postJson(UserSchema, '/api/auth/login', { username, password }),
-    logout: () => fetch('/api/auth/logout', { method: 'POST' }),
+    logout: () => postJson('/api/auth/logout', {}),
   },
   health: {
     get: () => getJson(HealthSchema, '/api/health'),
