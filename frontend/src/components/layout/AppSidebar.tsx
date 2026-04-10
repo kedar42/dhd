@@ -9,13 +9,11 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { NavMain } from './NavMain'
-import { NavUser } from './NavUser'
 import { type User } from '@/api/schemas'
 
 const adminNav = [
@@ -51,9 +49,6 @@ export const AppSidebar = ({ user, ...props }: Props) => {
       <SidebarContent>
         <NavMain items={nav} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
-      </SidebarFooter>
     </Sidebar>
   )
 }
