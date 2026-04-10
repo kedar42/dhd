@@ -14,10 +14,17 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Large } from '@/components/ui/typography'
 import { useAuthStore } from '@/stores/auth'
 
+const routeTitles: Record<string, string> = {
+  '': 'Dashboard',
+  peers: 'Peers',
+  requests: 'Requests',
+  firewall: 'Firewall',
+  settings: 'Settings',
+}
+
 const pageTitle = (pathname: string): string => {
-  const segment = pathname.split('/')[1]
-  if (!segment) return 'Dashboard'
-  return segment.charAt(0).toUpperCase() + segment.slice(1)
+  const segment = pathname.split('/')[1] ?? ''
+  return routeTitles[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1)
 }
 
 export const SiteHeader = () => {

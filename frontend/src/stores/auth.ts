@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import { api } from '@/api/client'
+import { api, ApiError } from '@/api/client'
 import { type User } from '@/api/schemas'
 
 type AuthState = {
   user: User | null
   initialized: boolean
   needsSetup: boolean
+  error: string | null
   init: () => Promise<void>
   completeSetup: () => void
   login: (username: string, password: string) => Promise<void>
@@ -16,6 +17,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   initialized: false,
   needsSetup: false,
+  error: null,
 
   init: async () => {
     try {
@@ -24,10 +26,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ needsSetup: true, initialized: true })
         return
       }
-      const user = await api.auth.me().catch(() => null)
+      const user = await api.auth.me().catch((err) => {
+        if (err instanceof ApiError && err.status === 401) return null
+        throw err
+      })
       set({ user, initialized: true })
-    } catch {
-      set({ initialized: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to connect to server'
+      set({ initialized: true, error: message })
     }
   },
 

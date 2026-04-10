@@ -80,7 +80,11 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 // AdminOnly requires the session role to be "admin". Must be used after Middleware.
 func (s *Store) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess, _ := r.Context().Value(SessionKey).(db.Session)
+		sess, ok := r.Context().Value(SessionKey).(db.Session)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 		if sess.Role != "admin" {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
@@ -95,13 +99,22 @@ func SetCookie(w http.ResponseWriter, token string) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(SessionTTL.Seconds()),
 	})
 }
 
 func ClearCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
 }
 
 func HashPassword(p string) (string, error) {

@@ -39,6 +39,28 @@ func AdminExists(db *sql.DB) (bool, error) {
 	return count > 0, err
 }
 
+// CreateFirstAdmin atomically creates an admin user only if none exists.
+// Returns an error if an admin already exists (prevents TOCTOU race).
+func CreateFirstAdmin(db *sql.DB, id, username, passwordHash string) error {
+	res, err := db.Exec(
+		`INSERT INTO users (id, username, password_hash, role, created_at)
+		 SELECT ?, ?, ?, 'admin', ?
+		 WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin')`,
+		id, username, passwordHash, time.Now().UTC(),
+	)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("admin already exists")
+	}
+	return nil
+}
+
 // --- Sessions ---
 
 func CreateSession(db *sql.DB, token, userID, username, role string, ttl time.Duration) error {

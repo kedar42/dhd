@@ -8,8 +8,11 @@ export class ApiError extends Error {
   }
 }
 
+const request = (url: string, init?: RequestInit) =>
+  fetch(url, { credentials: 'include', ...init })
+
 const getJson = async <T>(schema: z.ZodType<T>, url: string): Promise<T> => {
-  const res = await fetch(url)
+  const res = await request(url)
   if (!res.ok) throw new ApiError(res.status, await res.text())
   return schema.parse(await res.json())
 }
@@ -18,7 +21,7 @@ async function postJson<T>(schema: z.ZodType<T>, url: string, body: unknown): Pr
 async function postJson(url: string, body: unknown): Promise<void>
 async function postJson<T>(schemaOrUrl: z.ZodType<T> | string, urlOrBody: string | unknown, body?: unknown) {
   if (typeof schemaOrUrl === 'string') {
-    const res = await fetch(schemaOrUrl, {
+    const res = await request(schemaOrUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(urlOrBody),
@@ -26,7 +29,7 @@ async function postJson<T>(schemaOrUrl: z.ZodType<T> | string, urlOrBody: string
     if (!res.ok) throw new ApiError(res.status, await res.text())
     return
   }
-  const res = await fetch(urlOrBody as string, {
+  const res = await request(urlOrBody as string, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

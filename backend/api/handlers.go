@@ -10,6 +10,10 @@ import (
 	"github.com/kedar/wg-admin/db"
 )
 
+// dummyHash is used for constant-time comparison when a user is not found,
+// preventing timing attacks that could reveal valid usernames.
+var dummyHash, _ = auth.HashPassword("dummy-password")
+
 type Handler struct {
 	DB    *sql.DB
 	Auth  *auth.Store
@@ -28,7 +32,7 @@ func stub(w http.ResponseWriter, r *http.Request) {
 // POST /api/auth/login
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	body, ok := decode[struct {
-		Username string `json:"username" validate:"required"`
+		Username string `json:"username" validate:"required,max=255"`
 		Password string `json:"password" validate:"required"`
 	}](w, r)
 	if !ok {
@@ -38,7 +42,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	user, err := db.GetUserByUsername(h.DB, body.Username)
 	if err != nil {
 		// Use constant-time comparison even on not-found to avoid timing attacks
-		auth.CheckPassword("$2a$12$invalidhashpadding000000000000000000000000000000000000000", body.Password)
+		auth.CheckPassword(dummyHash, body.Password)
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -105,7 +109,7 @@ func (h *Handler) SetupAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, ok := decode[struct {
-		Username string `json:"username" validate:"required"`
+		Username string `json:"username" validate:"required,max=255"`
 		Password string `json:"password" validate:"required,min=8"`
 	}](w, r)
 	if !ok {
@@ -119,8 +123,8 @@ func (h *Handler) SetupAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := uuid.New().String()
-	if err := db.CreateUser(h.DB, id, body.Username, hash, "admin"); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+	if err := db.CreateFirstAdmin(h.DB, id, body.Username, hash); err != nil {
+		http.Error(w, "already configured", http.StatusForbidden)
 		return
 	}
 
