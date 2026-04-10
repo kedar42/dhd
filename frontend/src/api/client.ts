@@ -79,7 +79,7 @@ export const api = {
   },
   tunnels: {
     list: () => getJson(TunnelListSchema, '/api/peers'),
-    create: (params: { name: string; userId?: string; labels?: string[] }) =>
+    create: (params: { name: string; labels?: string[] }) =>
       postJson(CreateTunnelResponseSchema, '/api/peers', params),
     delete: (id: string) => deleteReq(`/api/peers/${id}`),
     toggle: (id: string) => patchJson(TunnelSchema, `/api/peers/${id}/toggle`),

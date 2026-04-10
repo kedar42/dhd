@@ -20,27 +20,14 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/stores/auth'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { api, ApiError } from '@/api/client'
-import type { User } from '@/api/schemas'
-
-const UNOWNED = '__unowned__'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
-  userId: z.string(),
 })
 
 type Props = {
@@ -49,8 +36,6 @@ type Props = {
 }
 
 export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
-  const currentUser = useAuthStore((s) => s.user)
-  const isAdmin = currentUser?.role === 'admin'
   const create = useTunnelsStore((s) => s.create)
 
   const [config, setConfig] = useState<string | undefined>()
@@ -58,23 +43,20 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const [error, setError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
 
-  const [users, setUsers] = useState<User[]>([])
   const [existingLabels, setExistingLabels] = useState<string[]>([])
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '', userId: UNOWNED },
+    defaultValues: { name: '' },
   })
 
   useEffect(() => {
-    if (!open) return
-    api.labels.list().then(setExistingLabels).catch(() => {})
-    if (isAdmin) {
-      api.users.list().then(setUsers).catch(() => {})
+    if (open) {
+      api.labels.list().then(setExistingLabels).catch(() => {})
     }
-  }, [open, isAdmin])
+  }, [open])
 
   const suggestions = existingLabels.filter(
     (l) => !labels.includes(l) && l.toLowerCase().includes(labelInput.toLowerCase()),
@@ -103,17 +85,10 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     setSubmitting(true)
     setError(undefined)
     try {
-      const params: { name: string; userId?: string; labels?: string[] } = {
+      const response = await create({
         name: values.name,
-      }
-      if (isAdmin) {
-        // Send empty string for unowned, or the user ID
-        params.userId = values.userId === UNOWNED ? '' : values.userId
-      }
-      if (labels.length > 0) {
-        params.labels = labels
-      }
-      const response = await create(params)
+        labels: labels.length > 0 ? labels : undefined,
+      })
       setConfig(response.config)
       setTunnelName(values.name)
     } catch (err) {
@@ -152,7 +127,8 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
             <DialogHeader>
               <DialogTitle>Tunnel created</DialogTitle>
               <DialogDescription>
-                Scan this QR code with the WireGuard app or download the config file.
+                Scan this QR code with the WireGuard app or download the config
+                file.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 py-4">
@@ -178,14 +154,18 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Tunnel name <span className="text-destructive">*</span>
+                        Tunnel name{' '}
+                        <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. Phone, Laptop" {...field} />
@@ -194,39 +174,6 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     </FormItem>
                   )}
                 />
-                {isAdmin && (
-                  <FormField
-                    control={form.control}
-                    name="userId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Owner</FormLabel>
-                        <Select
-                          name={field.name}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Unowned" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value={UNOWNED}>Unowned</SelectItem>
-                              {users.map((u) => (
-                                <SelectItem key={u.id} value={u.id}>
-                                  {u.username}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
                 <div className="space-y-2">
                   <FormLabel>Labels</FormLabel>
                   <div className="flex gap-2">
@@ -280,7 +227,12 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleClose} disabled={submitting}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClose}
+                    disabled={submitting}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={submitting}>

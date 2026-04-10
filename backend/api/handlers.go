@@ -210,27 +210,13 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 	body, ok := decode[struct {
 		Name   string   `json:"name" validate:"required,max=255"`
-		UserID *string  `json:"userId"`
 		Labels []string `json:"labels"`
 	}](w, r)
 	if !ok {
 		return
 	}
 
-	// Default owner to the current user; admin can override or set empty string for unowned
-	sess := r.Context().Value(auth.SessionKey).(db.Session)
-	var owner *string
-	if body.UserID == nil {
-		owner = &sess.UserID
-	} else if *body.UserID != "" {
-		// Validate that the referenced user exists
-		if _, err := db.GetUserByID(h.DB, *body.UserID); err != nil {
-			http.Error(w, "user not found", http.StatusBadRequest)
-			return
-		}
-		owner = body.UserID
-	}
-	// else: body.UserID is empty string → owner stays nil (unowned)
+	var owner *string // unowned by default
 
 	// Generate keypair
 	privKey, err := h.WG.GenKey()
@@ -427,6 +413,46 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, toggleResp)
 }
+// PATCH /api/peers/{id}/owner
+func (h *Handler) AssignPeerOwner(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	body, ok := decode[struct {
+		UserID *string `json:"userId"`
+	}](w, r)
+	if !ok {
+		return
+	}
+
+	if _, err := db.GetPeer(h.DB, id); err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	// Validate user exists if assigning
+	if body.UserID != nil && *body.UserID != "" {
+		if _, err := db.GetUserByID(h.DB, *body.UserID); err != nil {
+			http.Error(w, "user not found", http.StatusBadRequest)
+			return
+		}
+	} else {
+		body.UserID = nil // unassign
+	}
+
+	if err := db.UpdatePeerOwner(h.DB, id, body.UserID); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("update peer owner: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // GET /api/peers/{id}/config
 func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

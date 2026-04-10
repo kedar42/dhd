@@ -188,6 +188,11 @@ func GetPeer(db *sql.DB, id string) (Peer, error) {
 	return p, nil
 }
 
+func UpdatePeerOwner(db *sql.DB, id string, userID *string) error {
+	_, err := db.Exec(`UPDATE peers SET user_id = ? WHERE id = ?`, userID, id)
+	return err
+}
+
 // --- Labels ---
 
 func ListLabels(db *sql.DB) ([]string, error) {
