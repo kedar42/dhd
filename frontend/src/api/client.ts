@@ -77,5 +77,6 @@ export const api = {
       postJson(CreateTunnelResponseSchema, '/api/peers', { name }),
     delete: (id: string) => deleteReq(`/api/peers/${id}`),
     toggle: (id: string) => patchJson(TunnelSchema, `/api/peers/${id}/toggle`),
+    config: (id: string) => getJson(z.object({ config: z.string() }), `/api/peers/${id}/config`),
   },
 } as const

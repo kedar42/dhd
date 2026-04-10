@@ -4,12 +4,15 @@ import {
   IconToggleRight,
   IconTrash,
   IconKey,
+  IconQrcode,
+  IconDownload,
 } from '@tabler/icons-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Small, Muted } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
+import { QRDialog, downloadConfig } from './ConfigDialog'
 import { DeleteTunnelDialog } from './DeleteTunnelDialog'
 import type { Tunnel } from '@/api/schemas'
 
@@ -34,6 +37,8 @@ type Props = { tunnel: Tunnel }
 export const TunnelCard = ({ tunnel }: Props) => {
   const toggle = useTunnelsStore((s) => s.toggle)
   const [toggling, setToggling] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const isActive = tunnel.status === 'active'
@@ -44,6 +49,15 @@ export const TunnelCard = ({ tunnel }: Props) => {
       await toggle(tunnel.id)
     } finally {
       setToggling(false)
+    }
+  }
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      await downloadConfig(tunnel)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -87,6 +101,27 @@ export const TunnelCard = ({ tunnel }: Props) => {
           </div>
         </CardContent>
         <CardFooter className="justify-end gap-2">
+          {tunnel.mode === 'simple' && (
+            <>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setQrOpen(true)}
+                title="Show QR code"
+              >
+                <IconQrcode className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={handleDownload}
+                disabled={downloading}
+                title="Download .conf"
+              >
+                <IconDownload className="size-4" />
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -109,6 +144,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
           </Button>
         </CardFooter>
       </Card>
+      <QRDialog tunnel={tunnel} open={qrOpen} onOpenChange={setQrOpen} />
       <DeleteTunnelDialog
         tunnel={tunnel}
         open={deleteOpen}

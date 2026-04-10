@@ -34,6 +34,7 @@ func NewRouter(h *Handler) *chi.Mux {
 			r.Post("/api/peers", h.CreatePeer)
 			r.Delete("/api/peers/{id}", h.DeletePeer)
 			r.Patch("/api/peers/{id}/toggle", h.TogglePeer)
+			r.Get("/api/peers/{id}/config", h.GetPeerConfig)
 
 			r.Get("/api/requests", h.ListRequests)
 			r.Put("/api/requests/{id}", h.UpdateRequest)

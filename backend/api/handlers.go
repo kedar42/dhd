@@ -363,6 +363,53 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		"createdAt": peer.CreatedAt.Format(time.RFC3339),
 	})
 }
+// GET /api/peers/{id}/config
+func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	peer, err := db.GetPeer(h.DB, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	if peer.Mode != "simple" || peer.PrivateKeyEnc == nil {
+		http.Error(w, "config only available for simple mode tunnels", http.StatusBadRequest)
+		return
+	}
+
+	privKey, err := crypto.Decrypt(*peer.PrivateKeyEnc, h.WG.Cfg.SecretKey)
+	if err != nil {
+		http.Error(w, "decryption failed", http.StatusInternalServerError)
+		log.Printf("decrypt private key: %v", err)
+		return
+	}
+
+	serverPubKey, err := db.GetSetting(h.DB, "wg_server_public_key")
+	if err != nil {
+		http.Error(w, "server not configured", http.StatusInternalServerError)
+		log.Printf("get server pubkey: %v", err)
+		return
+	}
+
+	clientCfg := wg.ClientConfig{
+		PrivateKey:   privKey,
+		Address:      peer.WgIP + "/32",
+		DNS:          h.WG.Cfg.DNS,
+		ServerPubKey: serverPubKey,
+		Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"config": clientCfg.String(),
+	})
+}
+
 func (h *Handler) ListRequests(w http.ResponseWriter, r *http.Request)  { writeJSON(w, 200, []any{}) }
 func (h *Handler) SubmitRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }
 func (h *Handler) UpdateRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }

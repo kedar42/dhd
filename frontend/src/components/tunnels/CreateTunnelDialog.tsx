@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Small, Muted } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { ApiError } from '@/api/client'
 
@@ -99,11 +98,6 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 <IconDownload className="size-4" />
                 Download {tunnelName}.conf
               </Button>
-            </div>
-            <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3">
-              <Small className="text-destructive">
-                Save this config now. The private key cannot be retrieved again.
-              </Small>
             </div>
             <DialogFooter>
               <Button onClick={handleClose}>Done</Button>
