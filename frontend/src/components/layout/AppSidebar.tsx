@@ -44,7 +44,7 @@ export function AppSidebar({ user, ...props }: Props) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="data-[slot=sidebar-menu-button]:p-1.5!">
               <IconShieldCheck className="size-5!" />
-              <span className="text-base font-semibold">wg-admin</span>
+              <span className="text-base font-semibold">DHD</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

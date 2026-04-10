@@ -55,7 +55,7 @@ export default function Setup() {
           <div className="flex justify-center mb-2">
             <IconShieldCheck className="size-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Welcome to wg-admin</CardTitle>
+          <CardTitle className="text-2xl">Welcome to DHD</CardTitle>
           <CardDescription>Create your admin account to get started</CardDescription>
         </CardHeader>
         <CardContent>

@@ -41,7 +41,7 @@ export default function Login() {
           <div className="flex justify-center mb-2">
             <IconShieldCheck className="size-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">wg-admin</CardTitle>
+          <CardTitle className="text-2xl">DHD</CardTitle>
           <CardDescription>Sign in to manage your WireGuard server</CardDescription>
         </CardHeader>
         <CardContent>
