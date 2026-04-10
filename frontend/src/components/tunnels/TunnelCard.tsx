@@ -33,9 +33,13 @@ const formatHandshake = (ts: number | null | undefined): string => {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
-type Props = { tunnel: Tunnel }
+type Props = {
+  tunnel: Tunnel
+  showLabel?: boolean
+  showOwner?: boolean
+}
 
-export const TunnelCard = ({ tunnel }: Props) => {
+export const TunnelCard = ({ tunnel, showLabel = true, showOwner = true }: Props) => {
   const user = useAuthStore((s) => s.user)
   const toggle = useTunnelsStore((s) => s.toggle)
   const [toggling, setToggling] = useState(false)
@@ -69,17 +73,21 @@ export const TunnelCard = ({ tunnel }: Props) => {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <div className="space-y-1">
             <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <IconUser className="size-3" />
-              <span className="text-xs">
-                {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
-              </span>
-            </div>
+            {showOwner && (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <IconUser className="size-3" />
+                <span className="text-xs">
+                  {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            <Label htmlFor={`toggle-${tunnel.id}`} className="text-xs text-muted-foreground">
-              {isActive ? 'Active' : 'Disabled'}
-            </Label>
+            {showLabel && (
+              <Label htmlFor={`toggle-${tunnel.id}`} className="text-xs text-muted-foreground">
+                {isActive ? 'Active' : 'Disabled'}
+              </Label>
+            )}
             <Switch
               id={`toggle-${tunnel.id}`}
               checked={isActive}
