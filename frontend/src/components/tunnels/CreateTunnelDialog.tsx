@@ -211,7 +211,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                               <SelectValue placeholder="Unowned" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="z-[200]">
                             <SelectGroup>
                               <SelectItem value={UNOWNED}>Unowned</SelectItem>
                               {users.map((u) => (
