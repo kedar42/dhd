@@ -28,13 +28,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS peers (
   id              TEXT PRIMARY KEY,
-  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id         TEXT REFERENCES users(id) ON DELETE SET NULL,
   name            TEXT NOT NULL,
   public_key      TEXT UNIQUE NOT NULL,
   private_key_enc TEXT,
   mode            TEXT NOT NULL,
   wg_ip           TEXT UNIQUE NOT NULL,
   status          TEXT NOT NULL DEFAULT 'active',
+  labels          TEXT NOT NULL DEFAULT '',
   created_at      DATETIME NOT NULL
 );
 

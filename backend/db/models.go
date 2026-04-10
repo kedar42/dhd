@@ -22,12 +22,13 @@ type Session struct {
 
 type Peer struct {
 	ID            string
-	UserID        string
+	UserID        *string // nil for unowned tunnels
 	Name          string
 	PublicKey     string
 	PrivateKeyEnc *string // nil for secure mode peers
 	Mode          string  // "simple" | "secure"
 	WgIP          string
 	Status        string // "active" | "disabled"
+	Labels        string // comma-separated labels
 	CreatedAt     time.Time
 }

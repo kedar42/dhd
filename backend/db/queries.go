@@ -127,16 +127,16 @@ func DeleteExpiredSessions(db *sql.DB) error {
 
 func CreatePeer(db *sql.DB, p Peer) error {
 	_, err := db.Exec(
-		`INSERT INTO peers (id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.UserID, p.Name, p.PublicKey, p.PrivateKeyEnc, p.Mode, p.WgIP, p.Status, p.CreatedAt,
+		`INSERT INTO peers (id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, labels, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.UserID, p.Name, p.PublicKey, p.PrivateKeyEnc, p.Mode, p.WgIP, p.Status, p.Labels, p.CreatedAt,
 	)
 	return err
 }
 
 func ListPeers(db *sql.DB) ([]Peer, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, labels, created_at
 		 FROM peers ORDER BY created_at DESC`,
 	)
 	if err != nil {
@@ -146,7 +146,7 @@ func ListPeers(db *sql.DB) ([]Peer, error) {
 	var peers []Peer
 	for rows.Next() {
 		var p Peer
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.Labels, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		peers = append(peers, p)
@@ -156,17 +156,22 @@ func ListPeers(db *sql.DB) ([]Peer, error) {
 
 func GetPeer(db *sql.DB, id string) (Peer, error) {
 	row := db.QueryRow(
-		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, labels, created_at
 		 FROM peers WHERE id = ?`, id,
 	)
 	var p Peer
-	if err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+	if err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.Labels, &p.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Peer{}, ErrNotFound
 		}
 		return Peer{}, err
 	}
 	return p, nil
+}
+
+func UpdatePeerLabels(db *sql.DB, id, labels string) error {
+	_, err := db.Exec(`UPDATE peers SET labels = ? WHERE id = ?`, labels, id)
+	return err
 }
 
 func DeletePeer(db *sql.DB, id string) error {

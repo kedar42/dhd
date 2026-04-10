@@ -31,6 +31,7 @@ export const TunnelSchema = z.object({
   wgIp: z.ipv4(),
   status: TunnelStatus,
   userId: z.string().optional(),
+  labels: z.array(z.string()).optional().default([]),
   latestHandshake: z.number().optional(),
   transferRx: z.number().optional(),
   transferTx: z.number().optional(),

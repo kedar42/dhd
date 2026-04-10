@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +32,17 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
+}
+
+func parseLabels(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(s, ",")
+}
+
+func joinLabels(labels []string) string {
+	return strings.Join(labels, ",")
 }
 
 func stub(w http.ResponseWriter, r *http.Request) {
@@ -159,21 +171,23 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type peerResponse struct {
-		ID              string  `json:"id"`
-		Name            string  `json:"name"`
-		PublicKey       string  `json:"publicKey"`
-		Mode            string  `json:"mode"`
-		WgIP            string  `json:"wgIp"`
-		Status          string  `json:"status"`
-		UserID          string  `json:"userId"`
-		LatestHandshake *int64  `json:"latestHandshake,omitempty"`
-		TransferRx      *int64  `json:"transferRx,omitempty"`
-		TransferTx      *int64  `json:"transferTx,omitempty"`
-		CreatedAt       string  `json:"createdAt"`
+		ID              string   `json:"id"`
+		Name            string   `json:"name"`
+		PublicKey       string   `json:"publicKey"`
+		Mode            string   `json:"mode"`
+		WgIP            string   `json:"wgIp"`
+		Status          string   `json:"status"`
+		UserID          *string  `json:"userId,omitempty"`
+		Labels          []string `json:"labels"`
+		LatestHandshake *int64   `json:"latestHandshake,omitempty"`
+		TransferRx      *int64   `json:"transferRx,omitempty"`
+		TransferTx      *int64   `json:"transferTx,omitempty"`
+		CreatedAt       string   `json:"createdAt"`
 	}
 
 	result := make([]peerResponse, 0, len(peers))
 	for _, p := range peers {
+		labels := parseLabels(p.Labels)
 		pr := peerResponse{
 			ID:        p.ID,
 			Name:      p.Name,
@@ -182,6 +196,7 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 			WgIP:      p.WgIP,
 			Status:    p.Status,
 			UserID:    p.UserID,
+			Labels:    labels,
 			CreatedAt: p.CreatedAt.Format(time.RFC3339),
 		}
 		if live, ok := liveStats[p.PublicKey]; ok {
@@ -197,13 +212,20 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 // POST /api/peers
 func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 	body, ok := decode[struct {
-		Name string `json:"name" validate:"required,max=255"`
+		Name   string   `json:"name" validate:"required,max=255"`
+		UserID *string  `json:"userId"`
+		Labels []string `json:"labels"`
 	}](w, r)
 	if !ok {
 		return
 	}
 
-	sess := r.Context().Value(auth.SessionKey).(db.Session)
+	// Default owner to the current user; admin can override or leave nil
+	owner := body.UserID
+	if owner == nil {
+		sess := r.Context().Value(auth.SessionKey).(db.Session)
+		owner = &sess.UserID
+	}
 
 	// Generate keypair
 	privKey, err := h.WG.GenKey()
@@ -241,13 +263,14 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 
 	peer := db.Peer{
 		ID:            uuid.New().String(),
-		UserID:        sess.UserID,
+		UserID:        owner,
 		Name:          body.Name,
 		PublicKey:     pubKey,
 		PrivateKeyEnc: &encKey,
 		Mode:          "simple",
 		WgIP:          ip,
 		Status:        "active",
+		Labels:        joinLabels(body.Labels),
 		CreatedAt:     time.Now().UTC(),
 	}
 
@@ -279,7 +302,7 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]any{
+	resp := map[string]any{
 		"tunnel": map[string]any{
 			"id":        peer.ID,
 			"name":      peer.Name,
@@ -287,11 +310,15 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 			"mode":      peer.Mode,
 			"wgIp":      peer.WgIP,
 			"status":    peer.Status,
-			"userId":    peer.UserID,
+			"labels":    parseLabels(peer.Labels),
 			"createdAt": peer.CreatedAt.Format(time.RFC3339),
 		},
 		"config": clientCfg.String(),
-	})
+	}
+	if peer.UserID != nil {
+		resp["tunnel"].(map[string]any)["userId"] = *peer.UserID
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // DELETE /api/peers/{id}
@@ -356,16 +383,20 @@ func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	toggleResp := map[string]any{
 		"id":        peer.ID,
 		"name":      peer.Name,
 		"publicKey": peer.PublicKey,
 		"mode":      peer.Mode,
 		"wgIp":      peer.WgIP,
 		"status":    newStatus,
-		"userId":    peer.UserID,
+		"labels":    parseLabels(peer.Labels),
 		"createdAt": peer.CreatedAt.Format(time.RFC3339),
-	})
+	}
+	if peer.UserID != nil {
+		toggleResp["userId"] = *peer.UserID
+	}
+	writeJSON(w, http.StatusOK, toggleResp)
 }
 // GET /api/peers/{id}/config
 func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
