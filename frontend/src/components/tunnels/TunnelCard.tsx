@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import {
-  IconToggleLeft,
-  IconToggleRight,
   IconTrash,
   IconKey,
   IconQrcode,
@@ -10,6 +8,7 @@ import {
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Small, Muted } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { QRDialog, downloadConfig } from './ConfigDialog'
@@ -66,16 +65,18 @@ export const TunnelCard = ({ tunnel }: Props) => {
       <Card className={!isActive ? 'opacity-60' : undefined}>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {tunnel.mode === 'simple' && (
               <Badge variant="secondary" className="text-xs">
                 <IconKey className="size-3" />
                 Simple
               </Badge>
             )}
-            <Badge variant={isActive ? 'default' : 'outline'} className="text-xs">
-              {isActive ? 'Active' : 'Disabled'}
-            </Badge>
+            <Switch
+              checked={isActive}
+              onCheckedChange={handleToggle}
+              disabled={toggling}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-1.5">
@@ -122,19 +123,6 @@ export const TunnelCard = ({ tunnel }: Props) => {
               </Button>
             </>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggle}
-            disabled={toggling}
-          >
-            {isActive ? (
-              <IconToggleRight className="size-4" />
-            ) : (
-              <IconToggleLeft className="size-4" />
-            )}
-            {isActive ? 'Disable' : 'Enable'}
-          </Button>
           <Button
             variant="destructive"
             size="icon-sm"
