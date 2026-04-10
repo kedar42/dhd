@@ -67,35 +67,35 @@ export const TunnelCard = ({ tunnel }: Props) => {
   return (
     <>
       <Card className={!isActive ? 'opacity-60' : undefined}>
-        <CardHeader className="flex-row items-start justify-between space-y-0">
-          <div className="space-y-1.5">
+        <CardHeader className="space-y-1.5">
+          <div className="flex items-center justify-between">
             <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {tunnel.mode === 'simple' ? (
-                <Badge variant="secondary" className="text-xs">
-                  <IconKey className="size-3" />
-                  Simple
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  <IconLock className="size-3" />
-                  Secure
-                </Badge>
-              )}
-              {tunnel.userId && (
-                <Badge variant="outline" className="text-xs">
-                  <IconUser className="size-3" />
-                  {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
-                </Badge>
-              )}
-            </div>
+            <Switch
+              checked={isActive}
+              onCheckedChange={handleToggle}
+              disabled={toggling}
+              className="shrink-0"
+            />
           </div>
-          <Switch
-            checked={isActive}
-            onCheckedChange={handleToggle}
-            disabled={toggling}
-            className="shrink-0"
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {tunnel.mode === 'simple' ? (
+              <Badge variant="secondary" className="text-xs">
+                <IconKey className="size-3" />
+                Simple
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                <IconLock className="size-3" />
+                Secure
+              </Badge>
+            )}
+            {tunnel.userId && (
+              <Badge variant="outline" className="text-xs">
+                <IconUser className="size-3" />
+                {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-1.5">
           {tunnel.labels && tunnel.labels.length > 0 && (
