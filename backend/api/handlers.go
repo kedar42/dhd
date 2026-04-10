@@ -217,12 +217,20 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Default owner to the current user; admin can override or leave nil
-	owner := body.UserID
-	if owner == nil {
-		sess := r.Context().Value(auth.SessionKey).(db.Session)
+	// Default owner to the current user; admin can override or set empty string for unowned
+	sess := r.Context().Value(auth.SessionKey).(db.Session)
+	var owner *string
+	if body.UserID == nil {
 		owner = &sess.UserID
+	} else if *body.UserID != "" {
+		// Validate that the referenced user exists
+		if _, err := db.GetUserByID(h.DB, *body.UserID); err != nil {
+			http.Error(w, "user not found", http.StatusBadRequest)
+			return
+		}
+		owner = body.UserID
 	}
+	// else: body.UserID is empty string → owner stays nil (unowned)
 
 	// Generate keypair
 	privKey, err := h.WG.GenKey()

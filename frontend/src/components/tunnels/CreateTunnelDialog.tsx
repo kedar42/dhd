@@ -36,9 +36,11 @@ import { useTunnelsStore } from '@/stores/tunnels'
 import { api, ApiError } from '@/api/client'
 import type { User } from '@/api/schemas'
 
+const UNOWNED = '__unowned__'
+
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
-  userId: z.string().optional(),
+  userId: z.string(),
 })
 
 type Props = {
@@ -63,7 +65,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '', userId: undefined },
+    defaultValues: { name: '', userId: UNOWNED },
   })
 
   useEffect(() => {
@@ -104,8 +106,9 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
       const params: { name: string; userId?: string; labels?: string[] } = {
         name: values.name,
       }
-      if (isAdmin && values.userId && values.userId !== 'none') {
-        params.userId = values.userId
+      if (isAdmin) {
+        // Send empty string for unowned, or the user ID
+        params.userId = values.userId === UNOWNED ? '' : values.userId
       }
       if (labels.length > 0) {
         params.labels = labels
@@ -181,7 +184,9 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tunnel name</FormLabel>
+                      <FormLabel>
+                        Tunnel name <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. Phone, Laptop" {...field} />
                       </FormControl>
@@ -196,15 +201,19 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Owner</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          name={field.name}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
                           <FormControl>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Unowned" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent position="popper">
+                          <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="none">Unowned</SelectItem>
+                              <SelectItem value={UNOWNED}>Unowned</SelectItem>
                               {users.map((u) => (
                                 <SelectItem key={u.id} value={u.id}>
                                   {u.username}
