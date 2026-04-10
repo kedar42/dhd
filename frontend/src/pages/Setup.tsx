@@ -1,37 +1,47 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { IconShieldCheck } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+
+const schema = z
+  .object({
+    username: z.string().min(1, 'Username is required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirm: z.string(),
+  })
+  .refine(data => data.password === data.confirm, {
+    message: 'Passwords do not match',
+    path: ['confirm'],
+  })
+
+type FormValues = z.infer<typeof schema>
 
 type Props = { onDone: () => void }
 
 export default function Setup({ onDone }: Props) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: '', password: '', confirm: '' },
+  })
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    if (password !== confirm) { setError('Passwords do not match'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
-    setLoading(true)
+  async function onSubmit(values: FormValues) {
     try {
       const res = await fetch('/api/system/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: values.username, password: values.password }),
       })
-      if (!res.ok) { setError((await res.text()).trim() || 'Setup failed'); return }
+      if (!res.ok) {
+        form.setError('root', { message: (await res.text()).trim() || 'Setup failed' })
+        return
+      }
       onDone()
     } catch {
-      setError('Network error')
-    } finally {
-      setLoading(false)
+      form.setError('root', { message: 'Network error' })
     }
   }
 
@@ -46,47 +56,55 @@ export default function Setup({ onDone }: Props) {
           <CardDescription>Create your admin account to get started</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                required
-                autoFocus
-                autoComplete="username"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input autoFocus autoComplete="username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                placeholder="Minimum 8 characters"
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" autoComplete="new-password" placeholder="Minimum 8 characters" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="confirm">Confirm password</Label>
-              <Input
-                id="confirm"
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                required
-                autoComplete="new-password"
+              <FormField
+                control={form.control}
+                name="confirm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm password</FormLabel>
+                    <FormControl>
+                      <Input type="password" autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account…' : 'Create account'}
-            </Button>
-          </form>
+              {form.formState.errors.root && (
+                <FormMessage>{form.formState.errors.root.message}</FormMessage>
+              )}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Creating account…' : 'Create account'}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
