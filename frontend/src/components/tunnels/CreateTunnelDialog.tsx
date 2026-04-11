@@ -246,22 +246,20 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>New tunnel</DialogTitle>
-              <div className="flex items-center justify-between gap-2">
-                <DialogDescription className="flex-1">
-                  {mode === 'secure'
-                    ? 'Paste your public key. Your private key stays on your device.'
-                    : 'Create a new WireGuard tunnel. A keypair will be generated and a client config provided for download.'}
-                </DialogDescription>
-                <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex items-center justify-between">
+                <DialogTitle>New tunnel</DialogTitle>
+                <div className="flex items-center gap-1.5">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <IconInfoCircle className="size-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <IconShieldLock className="size-4" />
+                        Secure
+                        <IconInfoCircle className="size-3.5" />
+                      </div>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-[220px]">
-                      Secure mode lets you generate your keypair locally and
-                      paste only the public key. The server never sees your
-                      private key.
+                    <TooltipContent side="bottom" className="max-w-[220px]">
+                      Generate your keypair locally and paste only the public
+                      key. The server never sees your private key.
                     </TooltipContent>
                   </Tooltip>
                   <Switch
