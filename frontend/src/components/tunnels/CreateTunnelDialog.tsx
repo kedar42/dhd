@@ -249,19 +249,19 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
               <div className="flex items-center justify-between">
                 <DialogTitle>New tunnel</DialogTitle>
                 <div className="flex items-center gap-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <IconShieldLock className="size-4" />
-                        Secure
-                        <IconInfoCircle className="size-3.5" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[220px]">
-                      Generate your keypair locally and paste only the public
-                      key. The server never sees your private key.
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <IconShieldLock className="size-4" />
+                    Secure
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconInfoCircle className="size-3.5 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px]">
+                        Generate your keypair locally and paste only the public
+                        key. The server never sees your private key.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <Switch
                     checked={mode === 'secure'}
                     onCheckedChange={(checked) =>
