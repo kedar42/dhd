@@ -189,7 +189,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 <QRCodeSVG value={config} size={200} />
               </div>
               <Button variant="outline" onClick={handleDownload}>
-                <IconDownload className="size-4" />
+                <IconDownload size={16} />
                 Download {tunnelName}.conf
               </Button>
             </div>
@@ -201,7 +201,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-1.5">
-                <IconShieldLock className="size-5" />
+                <IconShieldLock size={20} />
                 Tunnel created (secure)
               </DialogTitle>
               <DialogDescription>
@@ -235,7 +235,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 className="w-full"
                 onClick={handleCopyServerInfo}
               >
-                <IconCopy className="size-4" />
+                <IconCopy size={16} />
                 Copy config template
               </Button>
             </div>
@@ -250,7 +250,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 <DialogTitle>New tunnel</DialogTitle>
                 <div className="mr-6 flex items-center gap-1.5">
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <IconShieldLock className="size-4" />
+                    <IconShieldLock size={16} />
                     Secure
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -358,7 +358,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                             onClick={() => removeLabel(label)}
                             className="hover:text-destructive"
                           >
-                            <IconX className="size-3" />
+                            <IconX size={12} />
                           </button>
                         </Badge>
                       ))}

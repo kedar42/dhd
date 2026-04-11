@@ -79,7 +79,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
               {tunnel.mode === 'secure' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <IconShieldLock className="size-4 text-muted-foreground" />
+                    <IconShieldLock size={16} className="text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent>Private key never touched the server</TooltipContent>
                 </Tooltip>
@@ -95,7 +95,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
           {tunnel.userId && (
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="outline" className="text-xs">
-                <IconUser className="size-3" />
+                <IconUser size={12} />
                 {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
               </Badge>
             </div>
@@ -143,7 +143,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
                 onClick={() => setQrOpen(true)}
                 title="Show QR code"
               >
-                <IconQrcode className="size-4" />
+                <IconQrcode size={16} />
               </Button>
               <Button
                 variant="outline"
@@ -152,7 +152,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
                 disabled={downloading}
                 title="Download .conf"
               >
-                <IconDownload className="size-4" />
+                <IconDownload size={16} />
               </Button>
             </>
           )}
@@ -161,7 +161,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
             size="icon-sm"
             onClick={() => setDeleteOpen(true)}
           >
-            <IconTrash className="size-4" />
+            <IconTrash size={16} />
           </Button>
         </CardFooter>
       </Card>

@@ -20,7 +20,7 @@ const Tunnels = () => {
       <div className="flex items-center justify-between">
         <H3>Tunnels</H3>
         <Button onClick={() => setCreateOpen(true)}>
-          <IconPlus className="size-4" />
+          <IconPlus size={16} />
           New Tunnel
         </Button>
       </div>
@@ -42,14 +42,14 @@ const Tunnels = () => {
       {!loading && tunnels.length === 0 && !error && (
         <div className="flex flex-col items-center gap-4 py-16">
           <div className="rounded-full bg-muted p-4">
-            <IconNetwork className="size-8 text-muted-foreground" />
+            <IconNetwork size={32} className="text-muted-foreground" />
           </div>
           <div className="text-center">
             <p className="text-lg font-medium">No tunnels yet</p>
             <Muted>Create your first WireGuard tunnel to get started.</Muted>
           </div>
           <Button onClick={() => setCreateOpen(true)}>
-            <IconPlus className="size-4" />
+            <IconPlus size={16} />
             Create Tunnel
           </Button>
         </div>
