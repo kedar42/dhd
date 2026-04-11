@@ -141,7 +141,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     URL.revokeObjectURL(url)
   }
 
-  const handleCopyServerInfo = () => {
+  const handleCopyServerInfo = async () => {
     if (!serverInfo) return
     const text = [
       `[Interface]`,
@@ -152,11 +152,16 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
       `[Peer]`,
       `PublicKey = ${serverInfo.serverPublicKey}`,
       `Endpoint = ${serverInfo.endpoint}`,
+      `# AllowedIPs = 0.0.0.0/0 routes all traffic; adjust to your subnet if needed`,
       `AllowedIPs = 0.0.0.0/0`,
       `PersistentKeepalive = 25`,
     ].join('\n')
-    navigator.clipboard.writeText(text)
-    toast.success('Config template copied to clipboard')
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Config template copied to clipboard')
+    } catch {
+      toast.error('Failed to copy to clipboard')
+    }
   }
 
   const handleClose = () => {

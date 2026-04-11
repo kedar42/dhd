@@ -31,11 +31,16 @@ echo "    Server public key: $PUB_KEY"
 
 mkdir -p "$(dirname "$DB_PATH")"
 
+if [ -z "$PUB_KEY" ]; then
+  echo "ERROR: Failed to generate WireGuard public key" >&2
+  exit 1
+fi
+
 sqlite3 "$DB_PATH" <<SQL
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR REPLACE INTO settings (key, value) VALUES ('wg_server_public_key', '$PUB_KEY');
+INSERT OR REPLACE INTO settings (key, value) VALUES ('wg_server_public_key', '$(printf '%s' "$PUB_KEY" | sed "s/'/''/g")');
 INSERT OR REPLACE INTO settings (key, value) VALUES ('wg_server_private_key', 'managed-by-container');
 SQL
 
