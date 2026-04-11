@@ -5,7 +5,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader'
 import { useAuthStore } from '@/stores/auth'
 import Login from '@/pages/Login'
 import Setup from '@/pages/Setup'
-import Peers from '@/pages/Peers'
+import Tunnels from '@/pages/Tunnels'
 import Requests from '@/pages/Requests'
 import Firewall from '@/pages/Firewall'
 import Stats from '@/pages/Stats'
@@ -38,7 +38,7 @@ const RequireAuth = () => {
 
 const RequireAdmin = () => {
   const user = useAuthStore(s => s.user)
-  if (user?.role !== 'admin') return <Navigate to="/peers" replace />
+  if (user?.role !== 'admin') return <Navigate to="/tunnels" replace />
   return <Outlet />
 }
 
@@ -63,8 +63,8 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RequireAuth />,
     children: [
-      { index: true, element: <Navigate to="/peers" replace /> },
-      { path: 'peers', element: <Peers /> },
+      { index: true, element: <Navigate to="/tunnels" replace /> },
+      { path: 'tunnels', element: <Tunnels /> },
       { path: 'stats', element: <Stats /> },
       {
         element: <RequireAdmin />,

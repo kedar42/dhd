@@ -25,6 +25,40 @@ func GetUserByUsername(db *sql.DB, username string) (User, error) {
 	return u, nil
 }
 
+func ListUsers(db *sql.DB) ([]User, error) {
+	rows, err := db.Query(
+		`SELECT id, username, role, created_at FROM users ORDER BY username`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+func GetUserByID(db *sql.DB, id string) (User, error) {
+	row := db.QueryRow(
+		`SELECT id, username, password_hash, role, created_at FROM users WHERE id = ?`,
+		id,
+	)
+	var u User
+	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return User{}, ErrNotFound
+		}
+		return User{}, err
+	}
+	return u, nil
+}
+
 func CreateUser(db *sql.DB, id, username, passwordHash, role string) error {
 	_, err := db.Exec(
 		`INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -105,5 +139,171 @@ func DeleteSession(db *sql.DB, token string) error {
 
 func DeleteExpiredSessions(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM sessions WHERE expires_at <= ?`, time.Now().UTC())
+	return err
+}
+
+// --- Peers ---
+
+func CreatePeer(db *sql.DB, p Peer) error {
+	_, err := db.Exec(
+		`INSERT INTO peers (id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.UserID, p.Name, p.PublicKey, p.PrivateKeyEnc, p.Mode, p.WgIP, p.Status, p.CreatedAt,
+	)
+	return err
+}
+
+func ListPeers(db *sql.DB) ([]Peer, error) {
+	rows, err := db.Query(
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		 FROM peers ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var peers []Peer
+	for rows.Next() {
+		var p Peer
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		peers = append(peers, p)
+	}
+	return peers, rows.Err()
+}
+
+func GetPeer(db *sql.DB, id string) (Peer, error) {
+	row := db.QueryRow(
+		`SELECT id, user_id, name, public_key, private_key_enc, mode, wg_ip, status, created_at
+		 FROM peers WHERE id = ?`, id,
+	)
+	var p Peer
+	if err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.PublicKey, &p.PrivateKeyEnc, &p.Mode, &p.WgIP, &p.Status, &p.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Peer{}, ErrNotFound
+		}
+		return Peer{}, err
+	}
+	return p, nil
+}
+
+func UpdatePeerOwner(db *sql.DB, id string, userID *string) error {
+	_, err := db.Exec(`UPDATE peers SET user_id = ? WHERE id = ?`, userID, id)
+	return err
+}
+
+// --- Labels ---
+
+func ListLabels(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(`SELECT name FROM labels ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
+}
+
+// EnsureLabel creates a label if it doesn't exist and returns its ID.
+func EnsureLabel(db *sql.DB, id, name string) (string, error) {
+	_, err := db.Exec(`INSERT INTO labels (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING`, id, name)
+	if err != nil {
+		return "", err
+	}
+	var existing string
+	err = db.QueryRow(`SELECT id FROM labels WHERE name = ?`, name).Scan(&existing)
+	return existing, err
+}
+
+func SetPeerLabels(db *sql.DB, peerID string, labelIDs []string) error {
+	if _, err := db.Exec(`DELETE FROM peer_labels WHERE peer_id = ?`, peerID); err != nil {
+		return err
+	}
+	for _, lid := range labelIDs {
+		if _, err := db.Exec(`INSERT INTO peer_labels (peer_id, label_id) VALUES (?, ?)`, peerID, lid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetPeerLabels(db *sql.DB, peerID string) ([]string, error) {
+	rows, err := db.Query(
+		`SELECT l.name FROM labels l JOIN peer_labels pl ON l.id = pl.label_id WHERE pl.peer_id = ? ORDER BY l.name`,
+		peerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
+}
+
+// GetAllPeerLabels returns a map of peerID -> label names for efficient bulk loading.
+func GetAllPeerLabels(db *sql.DB) (map[string][]string, error) {
+	rows, err := db.Query(
+		`SELECT pl.peer_id, l.name FROM labels l JOIN peer_labels pl ON l.id = pl.label_id ORDER BY l.name`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string][]string)
+	for rows.Next() {
+		var peerID, name string
+		if err := rows.Scan(&peerID, &name); err != nil {
+			return nil, err
+		}
+		result[peerID] = append(result[peerID], name)
+	}
+	return result, rows.Err()
+}
+
+func DeletePeer(db *sql.DB, id string) error {
+	_, err := db.Exec(`DELETE FROM peers WHERE id = ?`, id)
+	return err
+}
+
+func UpdatePeerStatus(db *sql.DB, id, status string) error {
+	_, err := db.Exec(`UPDATE peers SET status = ? WHERE id = ?`, status, id)
+	return err
+}
+
+// --- Settings ---
+
+func GetSetting(db *sql.DB, key string) (string, error) {
+	var value string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return value, nil
+}
+
+func SetSetting(db *sql.DB, key, value string) error {
+	_, err := db.Exec(
+		`INSERT INTO settings (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		key, value,
+	)
 	return err
 }

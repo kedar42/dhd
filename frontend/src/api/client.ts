@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { HealthSchema, SetupStatusSchema, UserSchema } from './schemas'
+import {
+  CreateTunnelResponseSchema,
+  HealthSchema,
+  SetupStatusSchema,
+  TunnelListSchema,
+  TunnelSchema,
+  UserSchema,
+} from './schemas'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -38,6 +45,17 @@ async function postJson<T>(schemaOrUrl: z.ZodType<T> | string, urlOrBody: string
   return schemaOrUrl.parse(await res.json())
 }
 
+const deleteReq = async (url: string): Promise<void> => {
+  const res = await request(url, { method: 'DELETE' })
+  if (!res.ok) throw new ApiError(res.status, await res.text())
+}
+
+const patchJson = async <T>(schema: z.ZodType<T>, url: string): Promise<T> => {
+  const res = await request(url, { method: 'PATCH' })
+  if (!res.ok) throw new ApiError(res.status, await res.text())
+  return schema.parse(await res.json())
+}
+
 export const api = {
   system: {
     setupStatus: () => getJson(SetupStatusSchema, '/api/system/setup'),
@@ -52,5 +70,19 @@ export const api = {
   },
   health: {
     get: () => getJson(HealthSchema, '/api/health'),
+  },
+  users: {
+    list: () => getJson(z.array(UserSchema), '/api/users'),
+  },
+  labels: {
+    list: () => getJson(z.array(z.string()), '/api/labels'),
+  },
+  tunnels: {
+    list: () => getJson(TunnelListSchema, '/api/peers'),
+    create: (params: { name: string; labels?: string[] }) =>
+      postJson(CreateTunnelResponseSchema, '/api/peers', params),
+    delete: (id: string) => deleteReq(`/api/peers/${id}`),
+    toggle: (id: string) => patchJson(TunnelSchema, `/api/peers/${id}/toggle`),
+    config: (id: string) => getJson(z.object({ config: z.string() }), `/api/peers/${id}/config`),
   },
 } as const

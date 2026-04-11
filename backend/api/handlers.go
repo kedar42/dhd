@@ -3,11 +3,18 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/kedar/wg-admin/auth"
+	"github.com/kedar/wg-admin/crypto"
 	"github.com/kedar/wg-admin/db"
+	"github.com/kedar/wg-admin/wg"
 )
 
 // dummyHash is used for constant-time comparison when a user is not found,
@@ -15,8 +22,9 @@ import (
 var dummyHash, _ = auth.HashPassword("dummy-password")
 
 type Handler struct {
-	DB    *sql.DB
-	Auth  *auth.Store
+	DB   *sql.DB
+	Auth *auth.Store
+	WG   *wg.Service
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -131,9 +139,404 @@ func (h *Handler) SetupAdmin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request)     { writeJSON(w, 200, []any{}) }
-func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request)    { stub(w, r) }
-func (h *Handler) DeletePeer(w http.ResponseWriter, r *http.Request)    { stub(w, r) }
+// GET /api/peers
+func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
+	peers, err := db.ListPeers(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("list peers: %v", err)
+		return
+	}
+
+	// Overlay live WireGuard stats
+	dump, err := h.WG.ShowDump()
+	if err != nil {
+		log.Printf("wg show dump: %v", err)
+	}
+	liveStats := make(map[string]wg.DumpLine)
+	for _, d := range dump {
+		liveStats[d.PublicKey] = d
+	}
+
+	type peerResponse struct {
+		ID              string   `json:"id"`
+		Name            string   `json:"name"`
+		PublicKey       string   `json:"publicKey"`
+		Mode            string   `json:"mode"`
+		WgIP            string   `json:"wgIp"`
+		Status          string   `json:"status"`
+		UserID          *string  `json:"userId,omitempty"`
+		Labels          []string `json:"labels"`
+		LatestHandshake *int64   `json:"latestHandshake,omitempty"`
+		TransferRx      *int64   `json:"transferRx,omitempty"`
+		TransferTx      *int64   `json:"transferTx,omitempty"`
+		CreatedAt       string   `json:"createdAt"`
+	}
+
+	// Bulk load labels for all peers
+	allLabels, err := db.GetAllPeerLabels(h.DB)
+	if err != nil {
+		log.Printf("get all peer labels: %v", err)
+	}
+
+	result := make([]peerResponse, 0, len(peers))
+	for _, p := range peers {
+		labels := allLabels[p.ID]
+		if labels == nil {
+			labels = []string{}
+		}
+		pr := peerResponse{
+			ID:        p.ID,
+			Name:      p.Name,
+			PublicKey: p.PublicKey,
+			Mode:      p.Mode,
+			WgIP:      p.WgIP,
+			Status:    p.Status,
+			UserID:    p.UserID,
+			Labels:    labels,
+			CreatedAt: p.CreatedAt.Format(time.RFC3339),
+		}
+		if live, ok := liveStats[p.PublicKey]; ok {
+			pr.LatestHandshake = &live.LatestHandshake
+			pr.TransferRx = &live.TransferRx
+			pr.TransferTx = &live.TransferTx
+		}
+		result = append(result, pr)
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// POST /api/peers
+func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
+	body, ok := decode[struct {
+		Name   string   `json:"name" validate:"required,max=255"`
+		Labels []string `json:"labels"`
+	}](w, r)
+	if !ok {
+		return
+	}
+
+	var owner *string // unowned by default
+
+	// Generate keypair
+	privKey, err := h.WG.GenKey()
+	if err != nil {
+		http.Error(w, "key generation failed", http.StatusInternalServerError)
+		log.Printf("genkey: %v", err)
+		return
+	}
+	pubKey, err := h.WG.PubKey(privKey)
+	if err != nil {
+		http.Error(w, "key derivation failed", http.StatusInternalServerError)
+		log.Printf("pubkey: %v", err)
+		return
+	}
+
+	// Allocate IP
+	ip, err := h.WG.AllocateIP(h.DB)
+	if err != nil {
+		if errors.Is(err, wg.ErrSubnetFull) {
+			http.Error(w, "no available IPs in subnet", http.StatusConflict)
+		} else {
+			http.Error(w, "IP allocation failed", http.StatusInternalServerError)
+			log.Printf("allocate ip: %v", err)
+		}
+		return
+	}
+
+	// Encrypt private key for storage
+	encKey, err := crypto.Encrypt(privKey, h.WG.Cfg.SecretKey)
+	if err != nil {
+		http.Error(w, "encryption failed", http.StatusInternalServerError)
+		log.Printf("encrypt: %v", err)
+		return
+	}
+
+	peer := db.Peer{
+		ID:            uuid.New().String(),
+		UserID:        owner,
+		Name:          body.Name,
+		PublicKey:     pubKey,
+		PrivateKeyEnc: &encKey,
+		Mode:          "simple",
+		WgIP:          ip,
+		Status:        "active",
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	if err := db.CreatePeer(h.DB, peer); err != nil {
+		http.Error(w, "failed to save peer", http.StatusInternalServerError)
+		log.Printf("create peer: %v", err)
+		return
+	}
+
+	// Assign labels
+	var labelNames []string
+	if len(body.Labels) > 0 {
+		var labelIDs []string
+		for _, name := range body.Labels {
+			lid, err := db.EnsureLabel(h.DB, uuid.New().String(), name)
+			if err != nil {
+				log.Printf("ensure label %q: %v", name, err)
+				continue
+			}
+			labelIDs = append(labelIDs, lid)
+			labelNames = append(labelNames, name)
+		}
+		if err := db.SetPeerLabels(h.DB, peer.ID, labelIDs); err != nil {
+			log.Printf("set peer labels: %v", err)
+		}
+	}
+	if labelNames == nil {
+		labelNames = []string{}
+	}
+
+	// Add to live WireGuard interface
+	if err := h.WG.SetPeer(pubKey, ip+"/32"); err != nil {
+		log.Printf("wg set peer: %v", err)
+		// Peer is saved but not live — log and continue
+	}
+
+	// Build client config
+	serverPubKey, err := db.GetSetting(h.DB, "wg_server_public_key")
+	if err != nil {
+		http.Error(w, "server not configured", http.StatusInternalServerError)
+		log.Printf("get server pubkey: %v", err)
+		return
+	}
+
+	clientCfg := wg.ClientConfig{
+		PrivateKey:   privKey,
+		Address:      ip + "/32",
+		DNS:          h.WG.Cfg.DNS,
+		ServerPubKey: serverPubKey,
+		Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+	}
+
+	resp := map[string]any{
+		"tunnel": map[string]any{
+			"id":        peer.ID,
+			"name":      peer.Name,
+			"publicKey": peer.PublicKey,
+			"mode":      peer.Mode,
+			"wgIp":      peer.WgIP,
+			"status":    peer.Status,
+			"labels":    labelNames,
+			"createdAt": peer.CreatedAt.Format(time.RFC3339),
+		},
+		"config": clientCfg.String(),
+	}
+	if peer.UserID != nil {
+		resp["tunnel"].(map[string]any)["userId"] = *peer.UserID
+	}
+	writeJSON(w, http.StatusCreated, resp)
+}
+
+// DELETE /api/peers/{id}
+func (h *Handler) DeletePeer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	peer, err := db.GetPeer(h.DB, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	if err := h.WG.RemovePeer(peer.PublicKey); err != nil {
+		log.Printf("wg remove peer: %v", err)
+	}
+
+	if err := db.DeletePeer(h.DB, id); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("delete peer: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// PATCH /api/peers/{id}/toggle
+func (h *Handler) TogglePeer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	peer, err := db.GetPeer(h.DB, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	var newStatus string
+	if peer.Status == "active" {
+		if err := h.WG.RemovePeer(peer.PublicKey); err != nil {
+			log.Printf("wg remove peer: %v", err)
+		}
+		newStatus = "disabled"
+	} else {
+		if err := h.WG.SetPeer(peer.PublicKey, peer.WgIP+"/32"); err != nil {
+			log.Printf("wg set peer: %v", err)
+		}
+		newStatus = "active"
+	}
+
+	if err := db.UpdatePeerStatus(h.DB, id, newStatus); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("update peer status: %v", err)
+		return
+	}
+
+	peerLabels, err := db.GetPeerLabels(h.DB, peer.ID)
+	if err != nil {
+		log.Printf("get peer labels: %v", err)
+	}
+	if peerLabels == nil {
+		peerLabels = []string{}
+	}
+	toggleResp := map[string]any{
+		"id":        peer.ID,
+		"name":      peer.Name,
+		"publicKey": peer.PublicKey,
+		"mode":      peer.Mode,
+		"wgIp":      peer.WgIP,
+		"status":    newStatus,
+		"labels":    peerLabels,
+		"createdAt": peer.CreatedAt.Format(time.RFC3339),
+	}
+	if peer.UserID != nil {
+		toggleResp["userId"] = *peer.UserID
+	}
+	writeJSON(w, http.StatusOK, toggleResp)
+}
+// PATCH /api/peers/{id}/owner
+func (h *Handler) AssignPeerOwner(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	body, ok := decode[struct {
+		UserID *string `json:"userId"`
+	}](w, r)
+	if !ok {
+		return
+	}
+
+	if _, err := db.GetPeer(h.DB, id); err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	// Validate user exists if assigning
+	if body.UserID != nil && *body.UserID != "" {
+		if _, err := db.GetUserByID(h.DB, *body.UserID); err != nil {
+			http.Error(w, "user not found", http.StatusBadRequest)
+			return
+		}
+	} else {
+		body.UserID = nil // unassign
+	}
+
+	if err := db.UpdatePeerOwner(h.DB, id, body.UserID); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("update peer owner: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/peers/{id}/config
+func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	peer, err := db.GetPeer(h.DB, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "peer not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("get peer: %v", err)
+		}
+		return
+	}
+
+	if peer.Mode != "simple" || peer.PrivateKeyEnc == nil {
+		http.Error(w, "config only available for simple mode tunnels", http.StatusBadRequest)
+		return
+	}
+
+	privKey, err := crypto.Decrypt(*peer.PrivateKeyEnc, h.WG.Cfg.SecretKey)
+	if err != nil {
+		http.Error(w, "decryption failed", http.StatusInternalServerError)
+		log.Printf("decrypt private key: %v", err)
+		return
+	}
+
+	serverPubKey, err := db.GetSetting(h.DB, "wg_server_public_key")
+	if err != nil {
+		http.Error(w, "server not configured", http.StatusInternalServerError)
+		log.Printf("get server pubkey: %v", err)
+		return
+	}
+
+	clientCfg := wg.ClientConfig{
+		PrivateKey:   privKey,
+		Address:      peer.WgIP + "/32",
+		DNS:          h.WG.Cfg.DNS,
+		ServerPubKey: serverPubKey,
+		Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"config": clientCfg.String(),
+	})
+}
+
+// GET /api/users
+func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := db.ListUsers(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("list users: %v", err)
+		return
+	}
+	type userResponse struct {
+		ID       string `json:"id"`
+		Username string `json:"username"`
+		Role     string `json:"role"`
+	}
+	result := make([]userResponse, 0, len(users))
+	for _, u := range users {
+		result = append(result, userResponse{ID: u.ID, Username: u.Username, Role: u.Role})
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// GET /api/labels
+func (h *Handler) ListLabels(w http.ResponseWriter, r *http.Request) {
+	labels, err := db.ListLabels(h.DB)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("list labels: %v", err)
+		return
+	}
+	if labels == nil {
+		labels = []string{}
+	}
+	writeJSON(w, http.StatusOK, labels)
+}
+
 func (h *Handler) ListRequests(w http.ResponseWriter, r *http.Request)  { writeJSON(w, 200, []any{}) }
 func (h *Handler) SubmitRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }
 func (h *Handler) UpdateRequest(w http.ResponseWriter, r *http.Request) { stub(w, r) }

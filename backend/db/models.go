@@ -19,3 +19,15 @@ type Session struct {
 	ExpiresAt time.Time
 	LastSeen  time.Time
 }
+
+type Peer struct {
+	ID            string
+	UserID        *string // nil for unowned tunnels
+	Name          string
+	PublicKey     string
+	PrivateKeyEnc *string // nil for secure mode peers
+	Mode          string  // "simple" | "secure"
+	WgIP          string
+	Status        string // "active" | "disabled"
+	CreatedAt     time.Time
+}

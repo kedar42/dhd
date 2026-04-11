@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS peers (
   id              TEXT PRIMARY KEY,
-  user_id         TEXT REFERENCES users(id),
+  user_id         TEXT REFERENCES users(id) ON DELETE SET NULL,
   name            TEXT NOT NULL,
   public_key      TEXT UNIQUE NOT NULL,
   private_key_enc TEXT,
@@ -38,9 +38,20 @@ CREATE TABLE IF NOT EXISTS peers (
   created_at      DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS labels (
+  id   TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS peer_labels (
+  peer_id  TEXT NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+  label_id TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (peer_id, label_id)
+);
+
 CREATE TABLE IF NOT EXISTS peer_requests (
   id         TEXT PRIMARY KEY,
-  user_id    TEXT REFERENCES users(id),
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
   public_key TEXT,
   mode       TEXT NOT NULL,
@@ -59,7 +70,7 @@ CREATE TABLE IF NOT EXISTS firewall_rules (
 
 CREATE TABLE IF NOT EXISTS peer_stats (
   id       TEXT PRIMARY KEY,
-  peer_id  TEXT REFERENCES peers(id),
+  peer_id  TEXT NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
   ts       DATETIME NOT NULL,
   bytes_rx INTEGER NOT NULL,
   bytes_tx INTEGER NOT NULL,
