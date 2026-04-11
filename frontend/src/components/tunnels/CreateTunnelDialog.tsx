@@ -247,11 +247,31 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
           <>
             <DialogHeader>
               <DialogTitle>New tunnel</DialogTitle>
-              <DialogDescription>
-                {mode === 'secure'
-                  ? 'Paste your public key. Your private key stays on your device.'
-                  : 'Create a new WireGuard tunnel. A keypair will be generated and a client config provided for download.'}
-              </DialogDescription>
+              <div className="flex items-center justify-between gap-2">
+                <DialogDescription className="flex-1">
+                  {mode === 'secure'
+                    ? 'Paste your public key. Your private key stays on your device.'
+                    : 'Create a new WireGuard tunnel. A keypair will be generated and a client config provided for download.'}
+                </DialogDescription>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconInfoCircle className="size-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-[220px]">
+                      Secure mode lets you generate your keypair locally and
+                      paste only the public key. The server never sees your
+                      private key.
+                    </TooltipContent>
+                  </Tooltip>
+                  <Switch
+                    checked={mode === 'secure'}
+                    onCheckedChange={(checked) =>
+                      form.setValue('mode', checked ? 'secure' : 'simple')
+                    }
+                  />
+                </div>
+              </div>
             </DialogHeader>
             <Form {...form}>
               <form
@@ -271,34 +291,6 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                         <Input placeholder="e.g. Phone, Laptop" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="mode"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <FormLabel className="mb-0">Secure mode</FormLabel>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconInfoCircle className="size-4 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-[240px]">
-                            Generate your keypair locally and paste only the
-                            public key. Your private key never leaves your device.
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value === 'secure'}
-                          onCheckedChange={(checked) =>
-                            field.onChange(checked ? 'secure' : 'simple')
-                          }
-                        />
-                      </FormControl>
                     </FormItem>
                   )}
                 />
