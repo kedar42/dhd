@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QRCodeSVG } from 'qrcode.react'
-import { IconCopy, IconDownload, IconShieldLock, IconX } from '@tabler/icons-react'
+import { IconCopy, IconDownload, IconInfoCircle, IconShieldLock, IconX } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -21,16 +21,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Muted, Small } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { ApiError } from '@/api/client'
@@ -283,26 +278,27 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                   control={form.control}
                   name="mode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mode</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="simple">
-                            Simple — server generates keypair
-                          </SelectItem>
-                          <SelectItem value="secure">
-                            Secure — bring your own public key
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <FormItem className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <FormLabel className="mb-0">Secure mode</FormLabel>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconInfoCircle className="size-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-[240px]">
+                            Generate your keypair locally and paste only the
+                            public key. Your private key never leaves your device.
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value === 'secure'}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked ? 'secure' : 'simple')
+                          }
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
