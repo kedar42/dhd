@@ -248,7 +248,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>New tunnel</DialogTitle>
-                <div className="flex items-center gap-1.5">
+                <div className="mr-6 flex items-center gap-1.5">
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <IconShieldLock className="size-4" />
                     Secure
