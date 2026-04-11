@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { AppShell } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { useAuthStore } from '@/stores/auth'
@@ -20,19 +21,28 @@ const RequireSetup = () => {
 
 const RequireAuth = () => {
   const { user, initialized, needsSetup } = useAuthStore()
+  const [opened, { toggle }] = useDisclosure()
+
   if (!initialized) return null
   if (needsSetup) return <Navigate to="/setup" replace />
   if (!user) return <Navigate to="/login" replace />
+
   return (
-    <SidebarProvider>
-      <AppSidebar user={user} />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
-          <Outlet />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <AppShell
+      header={{ height: 48 }}
+      navbar={{ width: 256, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+      padding="md"
+    >
+      <AppShell.Header>
+        <SiteHeader opened={opened} toggle={toggle} />
+      </AppShell.Header>
+      <AppShell.Navbar>
+        <AppSidebar user={user} />
+      </AppShell.Navbar>
+      <AppShell.Main>
+        <Outlet />
+      </AppShell.Main>
+    </AppShell>
   )
 }
 

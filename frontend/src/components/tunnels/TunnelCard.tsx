@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { notifications } from '@mantine/notifications'
 import {
   IconTrash,
   IconQrcode,
@@ -7,12 +7,7 @@ import {
   IconUser,
   IconShieldLock,
 } from '@tabler/icons-react'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Small, Muted } from '@/components/ui/typography'
+import { ActionIcon, Badge, Card, Group, Stack, Switch, Text, Tooltip } from '@mantine/core'
 import { useAuthStore } from '@/stores/auth'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { QRDialog, downloadConfig } from './ConfigDialog'
@@ -52,7 +47,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
     try {
       await toggle(tunnel.id)
     } catch {
-      toast.error('Failed to toggle tunnel')
+      notifications.show({ message: 'Failed to toggle tunnel', color: 'red' })
     } finally {
       setToggling(false)
     }
@@ -63,7 +58,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
     try {
       await downloadConfig(tunnel)
     } catch {
-      toast.error('Failed to download config')
+      notifications.show({ message: 'Failed to download config', color: 'red' })
     } finally {
       setDownloading(false)
     }
@@ -71,106 +66,84 @@ export const TunnelCard = ({ tunnel }: Props) => {
 
   return (
     <>
-      <Card className={!isActive ? 'opacity-60' : undefined}>
-        <CardHeader className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <CardTitle className="text-base font-medium">{tunnel.name}</CardTitle>
+      <Card shadow="sm" padding="md" radius="md" withBorder opacity={isActive ? 1 : 0.6}>
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Group gap="xs">
+              <Text fw={500}>{tunnel.name}</Text>
               {tunnel.mode === 'secure' && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <IconShieldLock size={16} className="text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>Private key never touched the server</TooltipContent>
+                <Tooltip label="Private key never touched the server">
+                  <IconShieldLock size={16} color="var(--mantine-color-dimmed)" />
                 </Tooltip>
               )}
-            </div>
+            </Group>
             <Switch
               checked={isActive}
-              onCheckedChange={handleToggle}
+              onChange={handleToggle}
               disabled={toggling}
-              className="shrink-0"
             />
-          </div>
+          </Group>
+
           {tunnel.userId && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline">
-                <IconUser size={12} />
+            <Group gap="xs">
+              <Badge variant="outline" leftSection={<IconUser size={12} />}>
                 {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
               </Badge>
-            </div>
+            </Group>
           )}
-        </CardHeader>
-        <CardContent className="space-y-1.5">
+
           {tunnel.labels && tunnel.labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 pb-1">
+            <Group gap={4}>
               {tunnel.labels.map((label) => (
-                <Badge key={label} variant="default">
-                  {label}
-                </Badge>
+                <Badge key={label}>{label}</Badge>
               ))}
-            </div>
+            </Group>
           )}
-          <div className="flex items-center justify-between">
-            <Muted>IP</Muted>
-            <Small className="font-mono">{tunnel.wgIp}</Small>
-          </div>
-          <div className="flex items-center justify-between">
-            <Muted>Public Key</Muted>
-            <Small className="font-mono truncate max-w-[180px]">
-              {tunnel.publicKey.slice(0, 20)}...
-            </Small>
-          </div>
-          <div className="flex items-center justify-between">
-            <Muted>Last Handshake</Muted>
-            <Small>{formatHandshake(tunnel.latestHandshake)}</Small>
-          </div>
-          {(tunnel.transferRx !== undefined || tunnel.transferTx !== undefined) && (
-            <div className="flex items-center justify-between">
-              <Muted>Transfer</Muted>
-              <Small>
-                {formatBytes(tunnel.transferRx ?? 0)} / {formatBytes(tunnel.transferTx ?? 0)}
-              </Small>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="justify-end gap-2">
-          {tunnel.mode === 'simple' && (
-            <>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setQrOpen(true)}
-                title="Show QR code"
-              >
-                <IconQrcode size={16} />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={handleDownload}
-                disabled={downloading}
-                title="Download .conf"
-              >
-                <IconDownload size={16} />
-              </Button>
-            </>
-          )}
-          <Button
-            variant="destructive"
-            size="icon-sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <IconTrash size={16} />
-          </Button>
-        </CardFooter>
+
+          <Stack gap={4}>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">IP</Text>
+              <Text size="sm" ff="monospace">{tunnel.wgIp}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Public Key</Text>
+              <Text size="sm" ff="monospace" truncate maw={180}>
+                {tunnel.publicKey.slice(0, 20)}...
+              </Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Last Handshake</Text>
+              <Text size="sm">{formatHandshake(tunnel.latestHandshake)}</Text>
+            </Group>
+            {(tunnel.transferRx !== undefined || tunnel.transferTx !== undefined) && (
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">Transfer</Text>
+                <Text size="sm">
+                  {formatBytes(tunnel.transferRx ?? 0)} / {formatBytes(tunnel.transferTx ?? 0)}
+                </Text>
+              </Group>
+            )}
+          </Stack>
+
+          <Group justify="flex-end" gap="xs">
+            {tunnel.mode === 'simple' && (
+              <>
+                <ActionIcon variant="outline" size="md" onClick={() => setQrOpen(true)} title="Show QR code">
+                  <IconQrcode size={16} />
+                </ActionIcon>
+                <ActionIcon variant="outline" size="md" onClick={handleDownload} disabled={downloading} title="Download .conf">
+                  <IconDownload size={16} />
+                </ActionIcon>
+              </>
+            )}
+            <ActionIcon variant="filled" color="red" size="md" onClick={() => setDeleteOpen(true)}>
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Group>
+        </Stack>
       </Card>
       <QRDialog tunnel={tunnel} open={qrOpen} onOpenChange={setQrOpen} />
-      <DeleteTunnelDialog
-        tunnel={tunnel}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      <DeleteTunnelDialog tunnel={tunnel} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   )
 }

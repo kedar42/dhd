@@ -1,5 +1,5 @@
-import { Muted } from '@/components/ui/typography'
+import { Text } from '@mantine/core'
 
-const Stats = () => <Muted>Stats page</Muted>
+const Stats = () => <Text size="sm" c="dimmed">Stats page</Text>
 
 export default Stats

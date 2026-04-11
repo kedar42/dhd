@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconPlus, IconNetwork } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { H3, Muted } from '@/components/ui/typography'
+import { Alert, Button, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { TunnelCard } from '@/components/tunnels/TunnelCard'
 import { CreateTunnelDialog } from '@/components/tunnels/CreateTunnelDialog'
@@ -16,55 +14,51 @@ const Tunnels = () => {
   }, [fetch])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <H3>Tunnels</H3>
-        <Button onClick={() => setCreateOpen(true)}>
-          <IconPlus size={16} />
+    <Stack gap="lg">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Title order={3}>Tunnels</Title>
+        <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>
           New Tunnel
         </Button>
       </div>
 
       {error && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4">
-          <Muted className="text-destructive">{error}</Muted>
-        </div>
+        <Alert color="red" variant="light">{error}</Alert>
       )}
 
       {loading && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[220px] rounded-xl" />
+            <Skeleton key={i} height={220} radius="md" />
           ))}
-        </div>
+        </SimpleGrid>
       )}
 
       {!loading && tunnels.length === 0 && !error && (
-        <div className="flex flex-col items-center gap-4 py-16">
-          <div className="rounded-full bg-muted p-4">
-            <IconNetwork size={32} className="text-muted-foreground" />
+        <Stack align="center" gap="md" py="xl">
+          <div style={{ borderRadius: '50%', backgroundColor: 'var(--mantine-color-gray-1)', padding: 16 }}>
+            <IconNetwork size={32} color="var(--mantine-color-dimmed)" />
           </div>
-          <div className="text-center">
-            <p className="text-lg font-medium">No tunnels yet</p>
-            <Muted>Create your first WireGuard tunnel to get started.</Muted>
-          </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <IconPlus size={16} />
+          <Stack align="center" gap={4}>
+            <Text size="lg" fw={500}>No tunnels yet</Text>
+            <Text size="sm" c="dimmed">Create your first WireGuard tunnel to get started.</Text>
+          </Stack>
+          <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>
             Create Tunnel
           </Button>
-        </div>
+        </Stack>
       )}
 
       {!loading && tunnels.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
           {tunnels.map((tunnel) => (
             <TunnelCard key={tunnel.id} tunnel={tunnel} />
           ))}
-        </div>
+        </SimpleGrid>
       )}
 
       <CreateTunnelDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </Stack>
   )
 }
 
