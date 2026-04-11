@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QRCodeSVG } from 'qrcode.react'
-import { IconDownload, IconX } from '@tabler/icons-react'
+import { IconCopy, IconDownload, IconInfoCircle, IconShieldLock, IconX } from '@tabler/icons-react'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -23,12 +24,34 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Muted, Small } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
-import { api, ApiError } from '@/api/client'
+import { ApiError } from '@/api/client'
+import { api } from '@/api/client'
+import type { ServerInfo } from '@/api/schemas'
 
-const formSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-})
+const WG_KEY_REGEX = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/
+
+const formSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required').max(255),
+    mode: z.enum(['simple', 'secure']),
+    publicKey: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.mode === 'secure') {
+        return data.publicKey && WG_KEY_REGEX.test(data.publicKey)
+      }
+      return true
+    },
+    {
+      message: 'Valid WireGuard public key required (base64, 44 characters)',
+      path: ['publicKey'],
+    },
+  )
 
 type Props = {
   open: boolean
@@ -39,6 +62,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const create = useTunnelsStore((s) => s.create)
 
   const [config, setConfig] = useState<string | undefined>()
+  const [serverInfo, setServerInfo] = useState<ServerInfo | undefined>()
   const [tunnelName, setTunnelName] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
@@ -49,8 +73,10 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', mode: 'simple', publicKey: '' },
   })
+
+  const mode = form.watch('mode')
 
   useEffect(() => {
     if (open) {
@@ -88,9 +114,15 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
       const response = await create({
         name: values.name,
         labels: labels.length > 0 ? labels : undefined,
+        mode: values.mode,
+        publicKey: values.mode === 'secure' ? values.publicKey : undefined,
       })
-      setConfig(response.config)
       setTunnelName(values.name)
+      if (values.mode === 'secure') {
+        setServerInfo(response.serverInfo)
+      } else {
+        setConfig(response.config)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create tunnel')
     } finally {
@@ -109,8 +141,32 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     URL.revokeObjectURL(url)
   }
 
+  const handleCopyServerInfo = async () => {
+    if (!serverInfo) return
+    const text = [
+      `[Interface]`,
+      `# PrivateKey = <your private key>`,
+      `Address = ${serverInfo.assignedIp}`,
+      `DNS = ${serverInfo.dns}`,
+      ``,
+      `[Peer]`,
+      `PublicKey = ${serverInfo.serverPublicKey}`,
+      `Endpoint = ${serverInfo.endpoint}`,
+      `# AllowedIPs = 0.0.0.0/0 routes all traffic; adjust to your subnet if needed`,
+      `AllowedIPs = 0.0.0.0/0`,
+      `PersistentKeepalive = 25`,
+    ].join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Config template copied to clipboard')
+    } catch {
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
   const handleClose = () => {
     setConfig(undefined)
+    setServerInfo(undefined)
     setTunnelName('')
     setError(undefined)
     setLabels([])
@@ -119,9 +175,11 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     onOpenChange(false)
   }
 
+  const showSuccess = config || serverInfo
+
   return (
-    <Dialog open={open} onOpenChange={config ? undefined : handleClose}>
-      <DialogContent className={config ? 'sm:max-w-md' : undefined}>
+    <Dialog open={open} onOpenChange={showSuccess ? undefined : handleClose}>
+      <DialogContent className={showSuccess ? 'sm:max-w-md' : undefined}>
         {config ? (
           <>
             <DialogHeader>
@@ -136,8 +194,54 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                 <QRCodeSVG value={config} size={200} />
               </div>
               <Button variant="outline" onClick={handleDownload}>
-                <IconDownload className="size-4" />
+                <IconDownload size={16} />
                 Download {tunnelName}.conf
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleClose}>Done</Button>
+            </DialogFooter>
+          </>
+        ) : serverInfo ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-1.5">
+                <IconShieldLock size={20} />
+                Tunnel created (secure)
+              </DialogTitle>
+              <DialogDescription>
+                Use the server details below to assemble your WireGuard config.
+                Your private key never left your device.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Muted>Server Public Key</Muted>
+                  <Small className="font-mono truncate max-w-[220px]">
+                    {serverInfo.serverPublicKey}
+                  </Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>Endpoint</Muted>
+                  <Small className="font-mono">{serverInfo.endpoint}</Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>Your IP</Muted>
+                  <Small className="font-mono">{serverInfo.assignedIp}</Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>DNS</Muted>
+                  <Small className="font-mono">{serverInfo.dns}</Small>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleCopyServerInfo}
+              >
+                <IconCopy size={16} />
+                Copy config template
               </Button>
             </div>
             <DialogFooter>
@@ -147,11 +251,30 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>New tunnel</DialogTitle>
-              <DialogDescription>
-                Create a new WireGuard tunnel. A keypair will be generated and a
-                client config provided for download.
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <DialogTitle>New tunnel</DialogTitle>
+                <div className="mr-6 flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <IconShieldLock size={16} />
+                    Secure
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconInfoCircle size={14} />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px]">
+                        Generate your keypair locally and paste only the public
+                        key. The server never sees your private key.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Switch
+                    checked={mode === 'secure'}
+                    onCheckedChange={(checked) =>
+                      form.setValue('mode', checked ? 'secure' : 'simple')
+                    }
+                  />
+                </div>
+              </div>
             </DialogHeader>
             <Form {...form}>
               <form
@@ -174,6 +297,28 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     </FormItem>
                   )}
                 />
+                {mode === 'secure' && (
+                  <FormField
+                    control={form.control}
+                    name="publicKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Public key{' '}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. xTIB...w4E="
+                            className="font-mono"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <div className="space-y-2">
                   <FormLabel>Labels</FormLabel>
                   <div className="flex gap-2">
@@ -218,7 +363,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                             onClick={() => removeLabel(label)}
                             className="hover:text-destructive"
                           >
-                            <IconX className="size-3" />
+                            <IconX size={12} />
                           </button>
                         </Badge>
                       ))}

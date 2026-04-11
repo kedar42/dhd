@@ -46,7 +46,7 @@ const Setup = () => {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
-            <IconShieldCheck className="size-8 text-primary" />
+            <IconShieldCheck size={32} className="text-primary" />
           </div>
           <CardTitle className="text-2xl">Welcome to DHD</CardTitle>
           <CardDescription>Create your admin account to get started</CardDescription>

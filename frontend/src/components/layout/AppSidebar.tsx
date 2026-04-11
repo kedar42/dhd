@@ -40,7 +40,7 @@ export const AppSidebar = ({ user, ...props }: Props) => {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 overflow-hidden rounded-md p-1.5 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!">
-              <IconShieldCheck className="size-5! shrink-0" />
+              <IconShieldCheck size={20} className="shrink-0" />
               <span className="text-base font-semibold truncate">DHD</span>
             </div>
           </SidebarMenuItem>
