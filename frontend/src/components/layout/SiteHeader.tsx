@@ -4,8 +4,8 @@ import { Avatar, Burger, Divider, Group, Menu, Text, Title, UnstyledButton } fro
 import { useAuthStore } from '@/stores/auth'
 
 const routeTitles: Record<string, string> = {
-  '': 'Dashboard',
-  peers: 'Peers',
+  tunnels: 'Tunnels',
+  stats: 'Stats',
   requests: 'Requests',
   firewall: 'Firewall',
   settings: 'Settings',

@@ -81,6 +81,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
               checked={isActive}
               onChange={handleToggle}
               disabled={toggling}
+              aria-label="Toggle tunnel"
             />
           </Group>
 
@@ -136,7 +137,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
                 </ActionIcon>
               </>
             )}
-            <ActionIcon variant="filled" color="red" size="md" onClick={() => setDeleteOpen(true)}>
+            <ActionIcon variant="filled" color="red" size="md" onClick={() => setDeleteOpen(true)} title="Delete tunnel">
               <IconTrash size={16} />
             </ActionIcon>
           </Group>

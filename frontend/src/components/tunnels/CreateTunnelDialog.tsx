@@ -265,6 +265,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                   <Switch
                     checked={field.value === 'secure'}
                     onChange={(e) => field.onChange(e.currentTarget.checked ? 'secure' : 'simple')}
+                    aria-label="Secure mode"
                   />
                 )}
               />
