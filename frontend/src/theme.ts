@@ -13,6 +13,13 @@ const accent: MantineColorsTuple = [
   '#9e1f2b',
 ]
 
+const glass = {
+  background: 'var(--glass-bg)',
+  borderColor: 'var(--glass-border)',
+  backdropFilter: 'var(--glass-blur)',
+  WebkitBackdropFilter: 'var(--glass-blur)',
+}
+
 export const theme = createTheme({
   primaryColor: 'primary',
   defaultRadius: 'md',
@@ -36,22 +43,29 @@ export const theme = createTheme({
       '#000000',
     ],
   },
+  components: {
+    Card: {
+      styles: { root: glass },
+    },
+    AppShell: {
+      styles: {
+        header: glass,
+        navbar: glass,
+      },
+    },
+  },
 })
 
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
-  variables: {
+  variables: {},
+  light: {
     '--glass-bg': 'rgba(255, 255, 255, 0.6)',
-    '--glass-border': 'rgba(255, 255, 255, 0.2)',
+    '--glass-border': 'rgba(0, 0, 0, 0.06)',
     '--glass-blur': 'blur(12px)',
   },
   dark: {
     '--glass-bg': 'rgba(18, 18, 18, 0.7)',
     '--glass-border': 'rgba(255, 255, 255, 0.08)',
-    '--glass-blur': 'blur(12px)',
-  },
-  light: {
-    '--glass-bg': 'rgba(255, 255, 255, 0.6)',
-    '--glass-border': 'rgba(0, 0, 0, 0.06)',
     '--glass-blur': 'blur(12px)',
   },
 })

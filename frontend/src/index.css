@@ -1,27 +1,3 @@
 body {
   margin: 0;
 }
-
-/* Frosted glass effect on cards */
-.mantine-Card-root {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-
-/* Frosted glass on AppShell header */
-.mantine-AppShell-header {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-
-/* Frosted glass on AppShell navbar */
-.mantine-AppShell-navbar {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
