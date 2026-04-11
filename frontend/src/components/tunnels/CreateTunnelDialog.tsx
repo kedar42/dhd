@@ -254,7 +254,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     Secure
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <IconInfoCircle className="size-3.5 cursor-help" />
+                        <IconInfoCircle className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-[220px]">
                         Generate your keypair locally and paste only the public
