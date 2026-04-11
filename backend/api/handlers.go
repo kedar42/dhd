@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,27 +210,63 @@ func (h *Handler) ListPeers(w http.ResponseWriter, r *http.Request) {
 // POST /api/peers
 func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 	body, ok := decode[struct {
-		Name   string   `json:"name" validate:"required,max=255"`
-		Labels []string `json:"labels"`
+		Name      string   `json:"name" validate:"required,max=255"`
+		Labels    []string `json:"labels"`
+		Mode      string   `json:"mode"`
+		PublicKey string   `json:"publicKey"`
 	}](w, r)
 	if !ok {
 		return
 	}
 
-	var owner *string // unowned by default
-
-	// Generate keypair
-	privKey, err := h.WG.GenKey()
-	if err != nil {
-		http.Error(w, "key generation failed", http.StatusInternalServerError)
-		log.Printf("genkey: %v", err)
+	// Default to simple mode
+	if body.Mode == "" {
+		body.Mode = "simple"
+	}
+	if body.Mode != "simple" && body.Mode != "secure" {
+		http.Error(w, "mode must be 'simple' or 'secure'", http.StatusBadRequest)
 		return
 	}
-	pubKey, err := h.WG.PubKey(privKey)
-	if err != nil {
-		http.Error(w, "key derivation failed", http.StatusInternalServerError)
-		log.Printf("pubkey: %v", err)
-		return
+
+	var owner *string // unowned by default
+	var pubKey, privKey string
+	var encKeyPtr *string
+
+	if body.Mode == "secure" {
+		// Validate provided public key
+		if body.PublicKey == "" {
+			http.Error(w, "publicKey is required for secure mode", http.StatusBadRequest)
+			return
+		}
+		if !isValidWgKey(body.PublicKey) {
+			http.Error(w, "invalid WireGuard public key format", http.StatusBadRequest)
+			return
+		}
+		pubKey = body.PublicKey
+	} else {
+		// Generate keypair for simple mode
+		var err error
+		privKey, err = h.WG.GenKey()
+		if err != nil {
+			http.Error(w, "key generation failed", http.StatusInternalServerError)
+			log.Printf("genkey: %v", err)
+			return
+		}
+		pubKey, err = h.WG.PubKey(privKey)
+		if err != nil {
+			http.Error(w, "key derivation failed", http.StatusInternalServerError)
+			log.Printf("pubkey: %v", err)
+			return
+		}
+
+		// Encrypt private key for storage
+		encKey, err := crypto.Encrypt(privKey, h.WG.Cfg.SecretKey)
+		if err != nil {
+			http.Error(w, "encryption failed", http.StatusInternalServerError)
+			log.Printf("encrypt: %v", err)
+			return
+		}
+		encKeyPtr = &encKey
 	}
 
 	// Allocate IP
@@ -244,21 +281,13 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Encrypt private key for storage
-	encKey, err := crypto.Encrypt(privKey, h.WG.Cfg.SecretKey)
-	if err != nil {
-		http.Error(w, "encryption failed", http.StatusInternalServerError)
-		log.Printf("encrypt: %v", err)
-		return
-	}
-
 	peer := db.Peer{
 		ID:            uuid.New().String(),
 		UserID:        owner,
 		Name:          body.Name,
 		PublicKey:     pubKey,
-		PrivateKeyEnc: &encKey,
-		Mode:          "simple",
+		PrivateKeyEnc: encKeyPtr,
+		Mode:          body.Mode,
 		WgIP:          ip,
 		Status:        "active",
 		CreatedAt:     time.Now().UTC(),
@@ -297,7 +326,7 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		// Peer is saved but not live — log and continue
 	}
 
-	// Build client config
+	// Build response
 	serverPubKey, err := db.GetSetting(h.DB, "wg_server_public_key")
 	if err != nil {
 		http.Error(w, "server not configured", http.StatusInternalServerError)
@@ -305,31 +334,55 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientCfg := wg.ClientConfig{
-		PrivateKey:   privKey,
-		Address:      ip + "/32",
-		DNS:          h.WG.Cfg.DNS,
-		ServerPubKey: serverPubKey,
-		Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+	tunnelData := map[string]any{
+		"id":        peer.ID,
+		"name":      peer.Name,
+		"publicKey": peer.PublicKey,
+		"mode":      peer.Mode,
+		"wgIp":      peer.WgIP,
+		"status":    peer.Status,
+		"labels":    labelNames,
+		"createdAt": peer.CreatedAt.Format(time.RFC3339),
+	}
+	if peer.UserID != nil {
+		tunnelData["userId"] = *peer.UserID
 	}
 
 	resp := map[string]any{
-		"tunnel": map[string]any{
-			"id":        peer.ID,
-			"name":      peer.Name,
-			"publicKey": peer.PublicKey,
-			"mode":      peer.Mode,
-			"wgIp":      peer.WgIP,
-			"status":    peer.Status,
-			"labels":    labelNames,
-			"createdAt": peer.CreatedAt.Format(time.RFC3339),
-		},
-		"config": clientCfg.String(),
+		"tunnel": tunnelData,
 	}
-	if peer.UserID != nil {
-		resp["tunnel"].(map[string]any)["userId"] = *peer.UserID
+
+	if body.Mode == "secure" {
+		resp["serverInfo"] = map[string]any{
+			"serverPublicKey": serverPubKey,
+			"endpoint":        fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+			"assignedIp":      ip + "/32",
+			"dns":             h.WG.Cfg.DNS,
+		}
+	} else {
+		clientCfg := wg.ClientConfig{
+			PrivateKey:   privKey,
+			Address:      ip + "/32",
+			DNS:          h.WG.Cfg.DNS,
+			ServerPubKey: serverPubKey,
+			Endpoint:     fmt.Sprintf("%s:%d", h.WG.Cfg.Endpoint, h.WG.Cfg.Port),
+		}
+		resp["config"] = clientCfg.String()
 	}
+
 	writeJSON(w, http.StatusCreated, resp)
+}
+
+// isValidWgKey validates a base64-encoded WireGuard key (44 chars, valid base64, 32 bytes decoded).
+func isValidWgKey(key string) bool {
+	if len(key) != 44 || key[43] != '=' {
+		return false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return false
+	}
+	return len(decoded) == 32
 }
 
 // DELETE /api/peers/{id}

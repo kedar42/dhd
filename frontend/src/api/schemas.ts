@@ -41,8 +41,17 @@ export type Tunnel = z.infer<typeof TunnelSchema>
 
 export const TunnelListSchema = z.array(TunnelSchema)
 
+export const ServerInfoSchema = z.object({
+  serverPublicKey: z.string(),
+  endpoint: z.string(),
+  assignedIp: z.string(),
+  dns: z.string(),
+})
+export type ServerInfo = z.infer<typeof ServerInfoSchema>
+
 export const CreateTunnelResponseSchema = z.object({
   tunnel: TunnelSchema,
   config: z.string().optional(),
+  serverInfo: ServerInfoSchema.optional(),
 })
 export type CreateTunnelResponse = z.infer<typeof CreateTunnelResponseSchema>

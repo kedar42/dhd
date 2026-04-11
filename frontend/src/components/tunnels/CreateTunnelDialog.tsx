@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QRCodeSVG } from 'qrcode.react'
-import { IconDownload, IconX } from '@tabler/icons-react'
+import { IconCopy, IconDownload, IconShieldLock, IconX } from '@tabler/icons-react'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -20,15 +21,42 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Muted, Small } from '@/components/ui/typography'
 import { useTunnelsStore } from '@/stores/tunnels'
-import { api, ApiError } from '@/api/client'
+import { ApiError } from '@/api/client'
+import { api } from '@/api/client'
+import type { ServerInfo } from '@/api/schemas'
 
-const formSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-})
+const WG_KEY_REGEX = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/
+
+const formSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required').max(255),
+    mode: z.enum(['simple', 'secure']),
+    publicKey: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.mode === 'secure') {
+        return data.publicKey && WG_KEY_REGEX.test(data.publicKey)
+      }
+      return true
+    },
+    {
+      message: 'Valid WireGuard public key required (base64, 44 characters)',
+      path: ['publicKey'],
+    },
+  )
 
 type Props = {
   open: boolean
@@ -39,6 +67,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const create = useTunnelsStore((s) => s.create)
 
   const [config, setConfig] = useState<string | undefined>()
+  const [serverInfo, setServerInfo] = useState<ServerInfo | undefined>()
   const [tunnelName, setTunnelName] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
@@ -49,8 +78,10 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', mode: 'simple', publicKey: '' },
   })
+
+  const mode = form.watch('mode')
 
   useEffect(() => {
     if (open) {
@@ -88,9 +119,15 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
       const response = await create({
         name: values.name,
         labels: labels.length > 0 ? labels : undefined,
+        mode: values.mode,
+        publicKey: values.mode === 'secure' ? values.publicKey : undefined,
       })
-      setConfig(response.config)
       setTunnelName(values.name)
+      if (values.mode === 'secure') {
+        setServerInfo(response.serverInfo)
+      } else {
+        setConfig(response.config)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create tunnel')
     } finally {
@@ -109,8 +146,27 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     URL.revokeObjectURL(url)
   }
 
+  const handleCopyServerInfo = () => {
+    if (!serverInfo) return
+    const text = [
+      `[Interface]`,
+      `# PrivateKey = <your private key>`,
+      `Address = ${serverInfo.assignedIp}`,
+      `DNS = ${serverInfo.dns}`,
+      ``,
+      `[Peer]`,
+      `PublicKey = ${serverInfo.serverPublicKey}`,
+      `Endpoint = ${serverInfo.endpoint}`,
+      `AllowedIPs = 0.0.0.0/0`,
+      `PersistentKeepalive = 25`,
+    ].join('\n')
+    navigator.clipboard.writeText(text)
+    toast.success('Config template copied to clipboard')
+  }
+
   const handleClose = () => {
     setConfig(undefined)
+    setServerInfo(undefined)
     setTunnelName('')
     setError(undefined)
     setLabels([])
@@ -119,9 +175,11 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     onOpenChange(false)
   }
 
+  const showSuccess = config || serverInfo
+
   return (
-    <Dialog open={open} onOpenChange={config ? undefined : handleClose}>
-      <DialogContent className={config ? 'sm:max-w-md' : undefined}>
+    <Dialog open={open} onOpenChange={showSuccess ? undefined : handleClose}>
+      <DialogContent className={showSuccess ? 'sm:max-w-md' : undefined}>
         {config ? (
           <>
             <DialogHeader>
@@ -144,13 +202,60 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
               <Button onClick={handleClose}>Done</Button>
             </DialogFooter>
           </>
+        ) : serverInfo ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-1.5">
+                <IconShieldLock className="size-5" />
+                Tunnel created (secure)
+              </DialogTitle>
+              <DialogDescription>
+                Use the server details below to assemble your WireGuard config.
+                Your private key never left your device.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Muted>Server Public Key</Muted>
+                  <Small className="font-mono truncate max-w-[220px]">
+                    {serverInfo.serverPublicKey}
+                  </Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>Endpoint</Muted>
+                  <Small className="font-mono">{serverInfo.endpoint}</Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>Your IP</Muted>
+                  <Small className="font-mono">{serverInfo.assignedIp}</Small>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Muted>DNS</Muted>
+                  <Small className="font-mono">{serverInfo.dns}</Small>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleCopyServerInfo}
+              >
+                <IconCopy className="size-4" />
+                Copy config template
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleClose}>Done</Button>
+            </DialogFooter>
+          </>
         ) : (
           <>
             <DialogHeader>
               <DialogTitle>New tunnel</DialogTitle>
               <DialogDescription>
-                Create a new WireGuard tunnel. A keypair will be generated and a
-                client config provided for download.
+                {mode === 'secure'
+                  ? 'Paste your public key. Your private key stays on your device.'
+                  : 'Create a new WireGuard tunnel. A keypair will be generated and a client config provided for download.'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -174,6 +279,55 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="mode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mode</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="simple">
+                            Simple — server generates keypair
+                          </SelectItem>
+                          <SelectItem value="secure">
+                            Secure — bring your own public key
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                {mode === 'secure' && (
+                  <FormField
+                    control={form.control}
+                    name="publicKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Public key{' '}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. xTIB...w4E="
+                            className="font-mono"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <div className="space-y-2">
                   <FormLabel>Labels</FormLabel>
                   <div className="flex gap-2">

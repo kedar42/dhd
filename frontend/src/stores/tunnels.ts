@@ -7,7 +7,7 @@ type TunnelsState = {
   loading: boolean
   error: string | null
   fetch: () => Promise<void>
-  create: (params: { name: string; labels?: string[] }) => Promise<CreateTunnelResponse>
+  create: (params: { name: string; labels?: string[]; mode?: string; publicKey?: string }) => Promise<CreateTunnelResponse>
   remove: (id: string) => Promise<void>
   toggle: (id: string) => Promise<void>
 }
