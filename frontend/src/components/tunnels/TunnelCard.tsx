@@ -94,7 +94,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
           </div>
           {tunnel.userId && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline">
                 <IconUser size={12} />
                 {tunnel.userId === user?.id ? 'You' : tunnel.userId.slice(0, 8)}
               </Badge>
@@ -105,7 +105,7 @@ export const TunnelCard = ({ tunnel }: Props) => {
           {tunnel.labels && tunnel.labels.length > 0 && (
             <div className="flex flex-wrap gap-1 pb-1">
               {tunnel.labels.map((label) => (
-                <Badge key={label} variant="default" className="text-xs">
+                <Badge key={label} variant="default">
                   {label}
                 </Badge>
               ))}
