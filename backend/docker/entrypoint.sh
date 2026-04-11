@@ -25,9 +25,6 @@ ip link set "$IFACE" up
 echo "==> Interface $IFACE is up (${GW_IP}, port ${PORT})"
 echo "    Server public key: $PUB_KEY"
 
-# Enable IP forwarding for tunnel traffic
-echo 1 > /proc/sys/net/ipv4/ip_forward
-
 # --- Pre-seed the DB with the server public key ---
 # This prevents the Go app from generating a DIFFERENT keypair.
 # The app's bootstrapServerKeys checks for wg_server_public_key and skips if present.
