@@ -1,15 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Muted } from '@/components/ui/typography'
+import { Button, Group, Modal, Paper, Stack, Text } from '@mantine/core'
 import { api, ApiError } from '@/api/client'
 import type { Tunnel } from '@/api/schemas'
 
@@ -41,30 +32,32 @@ export const QRDialog = ({ tunnel, open, onOpenChange }: Props) => {
   }, [open, tunnel.id])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{tunnel.name}</DialogTitle>
-          <DialogDescription>
-            Scan with the WireGuard app to configure this device.
-          </DialogDescription>
-        </DialogHeader>
-        {loading && <Muted className="py-8 text-center">Loading...</Muted>}
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {config && (
-          <div className="flex justify-center py-4">
-            <div className="rounded-lg bg-white p-3">
-              <QRCodeSVG value={config} size={220} />
-            </div>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      opened={open}
+      onClose={() => onOpenChange(false)}
+      title={tunnel.name}
+      size="sm"
+    >
+      <Text size="sm" c="dimmed" mb="md">
+        Scan with the WireGuard app to configure this device.
+      </Text>
+      {loading && (
+        <Text size="sm" c="dimmed" ta="center" py="xl">Loading...</Text>
+      )}
+      {error && <Text size="sm" c="red">{error}</Text>}
+      {config && (
+        <Stack align="center" py="md">
+          <Paper bg="white" p="sm" radius="md">
+            <QRCodeSVG value={config} size={220} />
+          </Paper>
+        </Stack>
+      )}
+      <Group justify="flex-end" mt="md">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>
+          Close
+        </Button>
+      </Group>
+    </Modal>
   )
 }
 

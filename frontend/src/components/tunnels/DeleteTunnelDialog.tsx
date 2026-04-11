@@ -1,13 +1,5 @@
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button, Group, Modal, Text } from '@mantine/core'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { ApiError } from '@/api/client'
 import type { Tunnel } from '@/api/schemas'
@@ -37,25 +29,20 @@ export const DeleteTunnelDialog = ({ tunnel, open, onOpenChange }: Props) => {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete tunnel</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete <strong>{tunnel.name}</strong>? This
-            will disconnect the client immediately and cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-            {deleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal opened={open} onClose={() => onOpenChange(false)} title="Delete tunnel">
+      <Text size="sm" c="dimmed" mb="md">
+        Are you sure you want to delete <strong>{tunnel.name}</strong>? This
+        will disconnect the client immediately and cannot be undone.
+      </Text>
+      {error && <Text size="sm" c="red" mb="md">{error}</Text>}
+      <Group justify="flex-end">
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
+          Cancel
+        </Button>
+        <Button color="red" onClick={handleDelete} loading={deleting}>
+          Delete
+        </Button>
+      </Group>
+    </Modal>
   )
 }

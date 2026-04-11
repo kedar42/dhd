@@ -3,11 +3,8 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { IconShieldCheck } from '@tabler/icons-react'
+import { Button, Card, Center, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 
 const schema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -35,55 +32,38 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-muted/40">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <IconShieldCheck size={32} className="text-primary" />
-          </div>
-          <CardTitle className="text-2xl">DHD</CardTitle>
-          <CardDescription>Sign in to manage your WireGuard server</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input autoFocus autoComplete="username" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" autoComplete="current-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {form.formState.errors.root && (
-              <FormMessage>{form.formState.errors.root.message}</FormMessage>
+    <Center mih="100vh">
+      <Card shadow="sm" padding="lg" radius="md" withBorder w={400} maw="100%">
+        <Stack align="center" gap="xs" mb="md">
+          <IconShieldCheck size={32} />
+          <Title order={3}>DHD</Title>
+          <Text size="sm" c="dimmed">Sign in to manage your WireGuard server</Text>
+        </Stack>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <Stack gap="md">
+            <TextInput
+              label="Username"
+              autoFocus
+              autoComplete="username"
+              error={form.formState.errors.username?.message}
+              {...form.register('username')}
+            />
+            <PasswordInput
+              label="Password"
+              autoComplete="current-password"
+              error={form.formState.errors.password?.message}
+              {...form.register('password')}
+            />
+            {form.formState.errors.root && (
+              <Text c="red" size="sm">{form.formState.errors.root.message}</Text>
             )}
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing in…' : 'Sign in'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
+            <Button type="submit" fullWidth loading={form.formState.isSubmitting}>
+              Sign in
+            </Button>
+          </Stack>
+        </form>
       </Card>
-    </div>
+    </Center>
   )
 }
 

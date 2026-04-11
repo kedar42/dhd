@@ -1,5 +1,5 @@
-import { Muted } from '@/components/ui/typography'
+import { Text } from '@mantine/core'
 
-const Firewall = () => <Muted>Firewall page</Muted>
+const Firewall = () => <Text size="sm" c="dimmed">Firewall page</Text>
 
 export default Firewall

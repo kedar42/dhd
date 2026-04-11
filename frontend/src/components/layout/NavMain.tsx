@@ -1,12 +1,6 @@
-import { useLocation, NavLink } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { type Icon } from '@tabler/icons-react'
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar'
+import { NavLink, Stack } from '@mantine/core'
 
 type NavItem = {
   title: string
@@ -16,23 +10,19 @@ type NavItem = {
 
 export const NavMain = ({ items }: { items: NavItem[] }) => {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
 
   return (
-    <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map(item => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
-                <NavLink to={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <Stack gap={4} p="xs">
+      {items.map(item => (
+        <NavLink
+          key={item.url}
+          label={item.title}
+          leftSection={<item.icon size={18} />}
+          active={pathname === item.url}
+          onClick={() => navigate(item.url)}
+        />
+      ))}
+    </Stack>
   )
 }

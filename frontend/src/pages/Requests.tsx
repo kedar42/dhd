@@ -1,5 +1,5 @@
-import { Muted } from '@/components/ui/typography'
+import { Text } from '@mantine/core'
 
-const Requests = () => <Muted>Requests page</Muted>
+const Requests = () => <Text size="sm" c="dimmed">Requests page</Text>
 
 export default Requests

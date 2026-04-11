@@ -1,32 +1,23 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QRCodeSVG } from 'qrcode.react'
 import { IconCopy, IconDownload, IconInfoCircle, IconShieldLock, IconX } from '@tabler/icons-react'
-import { toast } from 'sonner'
+import { notifications } from '@mantine/notifications'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Muted, Small } from '@/components/ui/typography'
+  ActionIcon,
+  Badge,
+  Button,
+  Group,
+  Modal,
+  Paper,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+  Tooltip,
+} from '@mantine/core'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { ApiError } from '@/api/client'
 import { api } from '@/api/client'
@@ -158,9 +149,9 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
     ].join('\n')
     try {
       await navigator.clipboard.writeText(text)
-      toast.success('Config template copied to clipboard')
+      notifications.show({ message: 'Config template copied to clipboard', color: 'green' })
     } catch {
-      toast.error('Failed to copy to clipboard')
+      notifications.show({ message: 'Failed to copy to clipboard', color: 'red' })
     }
   }
 
@@ -178,217 +169,191 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
   const showSuccess = config || serverInfo
 
   return (
-    <Dialog open={open} onOpenChange={showSuccess ? undefined : handleClose}>
-      <DialogContent className={showSuccess ? 'sm:max-w-md' : undefined}>
-        {config ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>Tunnel created</DialogTitle>
-              <DialogDescription>
-                Scan this QR code with the WireGuard app or download the config
-                file.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="rounded-lg bg-white p-3">
-                <QRCodeSVG value={config} size={200} />
-              </div>
-              <Button variant="outline" onClick={handleDownload}>
-                <IconDownload size={16} />
-                Download {tunnelName}.conf
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleClose}>Done</Button>
-            </DialogFooter>
-          </>
-        ) : serverInfo ? (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-1.5">
+    <Modal
+      opened={open}
+      onClose={handleClose}
+      title={
+        config
+          ? 'Tunnel created'
+          : serverInfo
+            ? (
+              <Group gap="xs">
                 <IconShieldLock size={20} />
                 Tunnel created (secure)
-              </DialogTitle>
-              <DialogDescription>
-                Use the server details below to assemble your WireGuard config.
-                Your private key never left your device.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Muted>Server Public Key</Muted>
-                  <Small className="font-mono truncate max-w-[220px]">
-                    {serverInfo.serverPublicKey}
-                  </Small>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Muted>Endpoint</Muted>
-                  <Small className="font-mono">{serverInfo.endpoint}</Small>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Muted>Your IP</Muted>
-                  <Small className="font-mono">{serverInfo.assignedIp}</Small>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Muted>DNS</Muted>
-                  <Small className="font-mono">{serverInfo.dns}</Small>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleCopyServerInfo}
-              >
-                <IconCopy size={16} />
-                Copy config template
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleClose}>Done</Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle>New tunnel</DialogTitle>
-                <div className="mr-6 flex items-center gap-1.5">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <IconShieldLock size={16} />
-                    Secure
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <IconInfoCircle size={14} />
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[220px]">
-                        Generate your keypair locally and paste only the public
-                        key. The server never sees your private key.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+              </Group>
+            )
+            : 'New tunnel'
+      }
+      size={showSuccess ? 'md' : undefined}
+      closeOnClickOutside={!showSuccess}
+    >
+      {config ? (
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Scan this QR code with the WireGuard app or download the config file.
+          </Text>
+          <Stack align="center" gap="md" py="md">
+            <Paper bg="white" p="sm" radius="md">
+              <QRCodeSVG value={config} size={200} />
+            </Paper>
+            <Button variant="outline" leftSection={<IconDownload size={16} />} onClick={handleDownload}>
+              Download {tunnelName}.conf
+            </Button>
+          </Stack>
+          <Group justify="flex-end">
+            <Button onClick={handleClose}>Done</Button>
+          </Group>
+        </Stack>
+      ) : serverInfo ? (
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Use the server details below to assemble your WireGuard config.
+            Your private key never left your device.
+          </Text>
+          <Stack gap="xs" py="sm">
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Server Public Key</Text>
+              <Text size="sm" ff="monospace" truncate maw={220}>
+                {serverInfo.serverPublicKey}
+              </Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Endpoint</Text>
+              <Text size="sm" ff="monospace">{serverInfo.endpoint}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Your IP</Text>
+              <Text size="sm" ff="monospace">{serverInfo.assignedIp}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">DNS</Text>
+              <Text size="sm" ff="monospace">{serverInfo.dns}</Text>
+            </Group>
+          </Stack>
+          <Button
+            variant="outline"
+            fullWidth
+            leftSection={<IconCopy size={16} />}
+            onClick={handleCopyServerInfo}
+          >
+            Copy config template
+          </Button>
+          <Group justify="flex-end" mt="xs">
+            <Button onClick={handleClose}>Done</Button>
+          </Group>
+        </Stack>
+      ) : (
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <Stack gap="md">
+            <Group justify="flex-end" gap="xs">
+              <Group gap={4}>
+                <IconShieldLock size={16} color="var(--mantine-color-dimmed)" />
+                <Text size="sm" c="dimmed">Secure</Text>
+                <Tooltip
+                  label="Generate your keypair locally and paste only the public key. The server never sees your private key."
+                  position="bottom"
+                  maw={220}
+                  multiline
+                >
+                  <IconInfoCircle size={14} color="var(--mantine-color-dimmed)" />
+                </Tooltip>
+              </Group>
+              <Controller
+                control={form.control}
+                name="mode"
+                render={({ field }) => (
                   <Switch
-                    checked={mode === 'secure'}
-                    onCheckedChange={(checked) =>
-                      form.setValue('mode', checked ? 'secure' : 'simple')
-                    }
-                  />
-                </div>
-              </div>
-            </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Tunnel name{' '}
-                        <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Phone, Laptop" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {mode === 'secure' && (
-                  <FormField
-                    control={form.control}
-                    name="publicKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Public key{' '}
-                          <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g. xTIB...w4E="
-                            className="font-mono"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    checked={field.value === 'secure'}
+                    onChange={(e) => field.onChange(e.currentTarget.checked ? 'secure' : 'simple')}
+                    aria-label="Secure mode"
                   />
                 )}
-                <div className="space-y-2">
-                  <FormLabel>Labels</FormLabel>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a label..."
-                      value={labelInput}
-                      onChange={(e) => setLabelInput(e.target.value)}
-                      onKeyDown={handleLabelKeyDown}
-                    />
-                    <Button
-                      type="button"
+              />
+            </Group>
+
+            <TextInput
+              label={<>Tunnel name <Text component="span" c="red">*</Text></>}
+              placeholder="e.g. Phone, Laptop"
+              error={form.formState.errors.name?.message}
+              {...form.register('name')}
+            />
+
+            {mode === 'secure' && (
+              <TextInput
+                label={<>Public key <Text component="span" c="red">*</Text></>}
+                placeholder="e.g. xTIB...w4E="
+                ff="monospace"
+                error={form.formState.errors.publicKey?.message}
+                {...form.register('publicKey')}
+              />
+            )}
+
+            <Stack gap="xs">
+              <Text size="sm" fw={500}>Labels</Text>
+              <Group gap="xs">
+                <TextInput
+                  placeholder="Add a label..."
+                  value={labelInput}
+                  onChange={(e) => setLabelInput(e.currentTarget.value)}
+                  onKeyDown={handleLabelKeyDown}
+                  flex={1}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addLabel()}
+                  disabled={!labelInput.trim()}
+                >
+                  Add
+                </Button>
+              </Group>
+              {labelInput && suggestions.length > 0 && (
+                <Group gap={4}>
+                  {suggestions.slice(0, 8).map((s) => (
+                    <Badge
+                      key={s}
                       variant="outline"
-                      size="sm"
-                      onClick={() => addLabel()}
-                      disabled={!labelInput.trim()}
-                      className="shrink-0"
+                      component="button"
+                      type="button"
+                      onClick={() => addLabel(s)}
                     >
-                      Add
-                    </Button>
-                  </div>
-                  {labelInput && suggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {suggestions.slice(0, 8).map((s) => (
-                        <Badge
-                          key={s}
-                          variant="outline"
-                          className="cursor-pointer hover:bg-accent"
-                          onClick={() => addLabel(s)}
-                        >
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  {labels.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {labels.map((label) => (
-                        <Badge key={label} variant="secondary" className="gap-1">
-                          {label}
-                          <button
-                            type="button"
-                            onClick={() => removeLabel(label)}
-                            className="hover:text-destructive"
-                          >
-                            <IconX size={12} />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Create'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+                      {s}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+              {labels.length > 0 && (
+                <Group gap="xs">
+                  {labels.map((label) => (
+                    <Badge
+                      key={label}
+                      variant="light"
+                      rightSection={
+                        <ActionIcon size="xs" variant="transparent" onClick={() => removeLabel(label)}>
+                          <IconX size={12} />
+                        </ActionIcon>
+                      }
+                    >
+                      {label}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+            </Stack>
+
+            {error && <Text size="sm" c="red">{error}</Text>}
+
+            <Group justify="flex-end">
+              <Button variant="outline" onClick={handleClose} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={submitting}>
+                Create
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      )}
+    </Modal>
   )
 }
