@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconPlus, IconNetwork } from '@tabler/icons-react'
-import { Alert, Button, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core'
+import { Alert, Box, Button, Group, SimpleGrid, Skeleton, Stack, Text, ThemeIcon, Title } from '@mantine/core'
 import { useTunnelsStore } from '@/stores/tunnels'
 import { TunnelCard } from '@/components/tunnels/TunnelCard'
 import { CreateTunnelDialog } from '@/components/tunnels/CreateTunnelDialog'
@@ -15,12 +15,12 @@ const Tunnels = () => {
 
   return (
     <Stack gap="lg">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Group justify="space-between">
         <Title order={3}>Tunnels</Title>
         <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>
           New Tunnel
         </Button>
-      </div>
+      </Group>
 
       {error && (
         <Alert color="red" variant="light">{error}</Alert>
@@ -36,9 +36,9 @@ const Tunnels = () => {
 
       {!loading && tunnels.length === 0 && !error && (
         <Stack align="center" gap="md" py="xl">
-          <div style={{ borderRadius: '50%', backgroundColor: 'var(--mantine-color-gray-1)', padding: 16 }}>
-            <IconNetwork size={32} color="var(--mantine-color-dimmed)" />
-          </div>
+          <ThemeIcon size="xl" radius="xl" variant="light" color="gray">
+            <IconNetwork size={24} />
+          </ThemeIcon>
           <Stack align="center" gap={4}>
             <Text size="lg" fw={500}>No tunnels yet</Text>
             <Text size="sm" c="dimmed">Create your first WireGuard tunnel to get started.</Text>

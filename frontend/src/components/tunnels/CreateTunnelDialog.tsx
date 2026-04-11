@@ -11,6 +11,7 @@ import {
   Button,
   Group,
   Modal,
+  Paper,
   Stack,
   Switch,
   Text,
@@ -192,9 +193,9 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
             Scan this QR code with the WireGuard app or download the config file.
           </Text>
           <Stack align="center" gap="md" py="md">
-            <div style={{ borderRadius: 8, backgroundColor: 'white', padding: 12 }}>
+            <Paper bg="white" p="sm" radius="md">
               <QRCodeSVG value={config} size={200} />
-            </div>
+            </Paper>
             <Button variant="outline" leftSection={<IconDownload size={16} />} onClick={handleDownload}>
               Download {tunnelName}.conf
             </Button>
@@ -294,7 +295,7 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                   value={labelInput}
                   onChange={(e) => setLabelInput(e.currentTarget.value)}
                   onKeyDown={handleLabelKeyDown}
-                  style={{ flex: 1 }}
+                  flex={1}
                 />
                 <Button
                   variant="outline"
@@ -311,7 +312,8 @@ export const CreateTunnelDialog = ({ open, onOpenChange }: Props) => {
                     <Badge
                       key={s}
                       variant="outline"
-                      style={{ cursor: 'pointer' }}
+                      component="button"
+                      type="button"
                       onClick={() => addLabel(s)}
                     >
                       {s}

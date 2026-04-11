@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Button, Group, Modal, Stack, Text } from '@mantine/core'
+import { Button, Group, Modal, Paper, Stack, Text } from '@mantine/core'
 import { api, ApiError } from '@/api/client'
 import type { Tunnel } from '@/api/schemas'
 
@@ -47,9 +47,9 @@ export const QRDialog = ({ tunnel, open, onOpenChange }: Props) => {
       {error && <Text size="sm" c="red">{error}</Text>}
       {config && (
         <Stack align="center" py="md">
-          <div style={{ borderRadius: 8, backgroundColor: 'white', padding: 12 }}>
+          <Paper bg="white" p="sm" radius="md">
             <QRCodeSVG value={config} size={220} />
-          </div>
+          </Paper>
         </Stack>
       )}
       <Group justify="flex-end" mt="md">
